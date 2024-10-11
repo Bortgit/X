@@ -1,0 +1,176 @@
+<html lang="es"> 
+ <head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Captura de Fotos (Cámara Trasera con Texto Seleccionado)</title> 
+  <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            height: 100vh; /* Altura completa de la ventana */
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            background-color: #007BFF; /* Fondo azul ocupando toda la align-items */
+        }
+        h1 { 
+            color: white; 
+            text-align: center; 
+            margin-bottom: 20px; 
+        }
+        #subWordTitle {
+            color: white;
+            text-align: center;
+            margin: 20px 0; /* Espacio entre títulos */
+        }
+        ul { 
+            list-style-type: none; 
+            padding: 0; 
+            margin: 0; 
+            background-color: rgba(0, 123, 255, 0.8); /* Fondo azul con transparencia */
+            border-radius: 10px;
+            padding: 20px; 
+            display: grid; /* Usar grid para el diseño de columnas */
+            grid-template-columns: repeat(2, 1fr); /* Dos columnas */
+            gap: 10px; /* Espacio entre elementos */
+        }
+        li { 
+            cursor: pointer; 
+            margin: 5px; 
+            color: white; /* Color de texto blanco */
+            padding: 10px; /* Espaciado interno */
+            background-color: rgba(255, 255, 255, 0.2); /* Fondo semitransparente */
+            border-radius: 5px; /* Bordes redondeados */
+            text-align: center; /* Centrar el texto */
+        }
+        #video, #canvas, #photo { 
+            display: none; 
+        }
+        #video { 
+            max-width: 100%; 
+            margin-top: 10px; 
+        }
+        #capture {
+            font-size: 24px; /* Tamaño de fuente más grande */
+            padding: 10px 20px; /* Espaciado interno del botón */
+            background-color: white; /* Color de fondo del botón */
+            color: #007BFF; /* Color del texto del botón */
+            border: none; /* Sin borde */
+            border-radius: 5px; /* Bordes redondeados */
+            cursor: pointer; /* Cambiar cursor al pasar sobre el botón */
+            margin-top: 20px; /* Espacio arriba del botón */
+            display: none; /* Ocultar el botón inicialmente */
+        }
+        #capture:hover {
+            background-color: #e0e0e0; /* Color de fondo al pasar el mouse */
+        }
+        #selectedText {
+            color: white; /* Color del texto seleccionado */
+            margin-top: 20px; /* Espacio superior */
+            font-size: 24px; /* Tamaño de fuente */
+            display: none; /* Ocultar inicialmente */
+        }
+    </style> 
+ </head> 
+ <body> 
+  <h1>Selecciona un salón</h1> 
+  <ul id="wordList"> 
+   <li data-words="Ruleta1,Ruleta2,Ruleta3,Ruleta4,Ruleta5,Ruleta6,Ruleta7,Ruleta8,Multi1,Multi2,Multi3,Multi4,Multi5,Multi6,Multi7,Multi8,Impera1,Impera2,Impera3,Impera black edition1,Impera black edition2,Impera black edition3,Linkking1,Linkking2,Linkking3,Sst1,Sst2,Sst3,Sst4,Sst5,Manhattan">Zafra1</li> 
+   <li data-words="Ruleta1,Ruleta2,Ruleta3,Ruleta4,Ruleta5,Ruleta6,Ruleta7,Ruleta8,Multi1,Multi2,Multi3,Multi4,Multi5,Multi6,Power1,Power2,Power3,Cash1,Cash2,Cash3,Bally1,Bally2,Bally3,Magic Fortune1,Magic Fortune2,Magic Fortune3,Sst1,Sst2,Sst3,Sst4,Sst5">Zafra2</li> 
+  </ul> 
+  <div id="subWordTitle" style="display: none;">
+    Selecciona una máquina 
+  </div> 
+  <div id="selectedText"></div> 
+  <ul id="subWordList" style="display: none; margin-top: 20px;"></ul> <!-- Margen añadido --> 
+  <video id="video" autoplay></video> 
+  <canvas id="canvas"></canvas> 
+  <img id="photo"> <button id="capture">Foto</button> 
+  <script>
+        const wordList = document.getElementById('wordList');
+        const subWordList = document.getElementById('subWordList');
+        const subWordTitle = document.getElementById('subWordTitle');
+        const selectedText = document.getElementById('selectedText');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureButton = document.getElementById('capture');
+        const photo = document.getElementById('photo');
+        let currentText = '';
+
+        wordList.addEventListener('click', function(event) {
+            if (event.target.tagName === 'LI') {
+                const words = event.target.getAttribute('data-words').split(',');
+                showSubWords(words);
+                wordList.style.display = 'none'; // Ocultar el listado de palabras
+            }
+        });
+
+        function showSubWords(words) {
+            subWordList.innerHTML = ''; // Limpiar el listado de sub-palabras
+            words.forEach(word => {
+                const li = document.createElement('li');
+                li.textContent = word;
+                li.addEventListener('click', function() {
+                    currentText = word;
+                    selectedText.textContent = currentText; // Solo mostrar el texto seleccionado
+                    selectedText.style.display = 'block'; // Mostrar el texto
+                    startCamera();
+                    subWordList.style.display = 'none'; // Ocultar el listado de sub-palabras
+                });
+                subWordList.appendChild(li);
+            });
+            subWordTitle.style.display = 'block'; // Mostrar el título de sub-palabras
+            subWordList.style.display = 'grid'; // Mostrar el listado de sub-palabras en grid
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { exact: "environment" } }
+            })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.style.display = 'block';
+                captureButton.style.display = 'block'; // Mostrar el botón de captura
+            })
+            .catch((err) => {
+                console.error("Error al acceder a la cámara: ", err);
+            });
+        }
+
+        captureButton.addEventListener('click', function() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            // Dibujar el texto en la imagen
+            ctx.font = '30px Arial'; // Estilo y tamaño de la fuente
+            ctx.fillStyle = 'white'; // Color del texto
+            ctx.fillText(currentText, 20, 50); // Coordenadas para el texto
+
+            const dataURL = canvas.toDataURL('image/png');
+            photo.src = dataURL;
+            photo.style.display = 'block';
+
+            // Descargar automáticamente la foto
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `${currentText}.png`;
+            link.click();
+
+            // Ocultar video y botón después de capturar
+            video.style.display = 'none';
+            captureButton.style.display = 'none';
+
+            // Regresar al listado de sub-palabras
+            setTimeout(() => {
+                subWordList.style.display = 'grid'; // Mostrar el listado de sub-palabras en grid
+                subWordTitle.style.display = 'block'; // Mostrar el título de sub-palabras
+                selectedText.style.display = 'none'; // Ocultar el texto seleccionado
+                photo.style.display = 'none'; // Ocultar la imagen
+            }, 1000); // Esperar 1 segundo antes de regresar
+        });
+    </script> 
+ </body>
+</html
