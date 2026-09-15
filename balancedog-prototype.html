@@ -119,13 +119,12 @@ img{max-width:100%;}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:6px 0 10px;position:relative;
 }
-.mascot-stage{position:relative;width:150px;height:120px;display:flex;align-items:flex-end;justify-content:center;}
+.mascot-stage{position:relative;width:210px;height:150px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
 .mascot-anim{
-  width:128px;height:auto;display:block;transform-origin:bottom center;
+  height:auto;display:block;transform-origin:bottom center;
   animation:squash 1.3s ease-in-out infinite;
   filter:drop-shadow(0 8px 6px rgba(0,0,0,.15));
   image-rendering:pixelated;image-rendering:-moz-crisp-edges;image-rendering:crisp-edges;
-  border-radius:10px;
 }
 @keyframes squash{
   0%{transform:scaleY(1) scaleX(1);}
@@ -343,7 +342,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 
         <div class="mascot-wrap">
           <div class="mascot-stage">
-            <img class="mascot-anim" id="mascotImg" src="assets/mascota/contento.jpeg" alt="Contento">
+            <img class="mascot-anim" id="mascotImg" src="assets/mascota/contento.png" style="width:138px;" alt="Contento">
           </div>
           <div class="mascot-label" id="mascotLabel">Contento</div>
         </div>
@@ -620,15 +619,18 @@ const EVAL_QUESTIONS = [
 ];
 const EVAL_OPTS = ['Nunca','A veces','Frecuentemente','Siempre'];
 
-/* ---------------- mascota: sprites por estado ---------------- */
+/* ---------------- mascota: sprites recortados (fondo transparente) por estado ----------------
+   Todos los PNG comparten la misma escala real (derivan del mismo lienzo original), por eso
+   cada uno lleva su propio ancho en px: así el perrito se ve siempre del mismo tamaño y solo
+   cambia el "bounding box" según los objetos/iconos que le acompañen en ese estado. */
 const MASCOT_IMAGES = {
-  contento:'assets/mascota/contento.jpeg',
-  entrenando:'assets/mascota/entrenando.jpeg',
-  dormido:'assets/mascota/dormido.jpeg',
-  triste:'assets/mascota/triste.jpeg',
-  vacaciones:'assets/mascota/vacaciones.jpeg',
-  jugando:'assets/mascota/jugando.jpeg',
-  graduado:'assets/mascota/graduado.jpeg',
+  contento:  {src:'assets/mascota/contento.png',   w:138},
+  entrenando:{src:'assets/mascota/entrenando.png', w:132},
+  dormido:   {src:'assets/mascota/dormido.png',    w:132},
+  triste:    {src:'assets/mascota/triste.png',     w:120},
+  vacaciones:{src:'assets/mascota/vacaciones.png', w:183},
+  jugando:   {src:'assets/mascota/jugando.png',    w:146},
+  graduado:  {src:'assets/mascota/graduado.png',   w:110},
 };
 
 /* ---------------- date utils ---------------- */
@@ -775,8 +777,10 @@ function renderHome(){
   if(unread>0){ badge.textContent=unread; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
 
   const ps = computePetStateDisplay(c);
+  const sprite = MASCOT_IMAGES[ps.key];
   const mascotImg = document.getElementById('mascotImg');
-  mascotImg.src = MASCOT_IMAGES[ps.key];
+  mascotImg.src = sprite.src;
+  mascotImg.style.width = sprite.w + 'px';
   mascotImg.alt = ps.label;
   document.getElementById('mascotLabel').textContent = ps.label;
 
