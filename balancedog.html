@@ -440,6 +440,18 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         </div>
       </div>
 
+      <!-- ============ DIY BOOKING (horario fijo, sin calendario) ============ -->
+      <div class="screen" id="screenDiyBooking">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenXpServices')">← Volver</button><h2 id="diyBookingTitle">DIY</h2></div>
+        <div class="screen-pad">
+          <div id="diyDogChoice"></div>
+          <div id="diyGroupChoice"></div>
+          <div class="note-box" id="diyScheduleNote"></div>
+          <div class="pricebox" id="diyPricebox"></div>
+          <button class="btn" id="diyPayBtn" onclick="payDiyBooking()" disabled>Reservar y pagar (simulado)</button>
+        </div>
+      </div>
+
       <!-- ============ RESIDENCE BOOKING ============ -->
       <div class="screen" id="screenResidence">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Reservar residencia</h2></div>
@@ -608,6 +620,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 const STORAGE_KEY = 'balancedog_state_v2';
 const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
 const FIXED_HOURS = ['09:00','11:00','13:00','17:00','19:00'];
+const DIY_GROUPS = [ {id:'A', label:'18:00–19:00'}, {id:'B', label:'19:00–20:00'} ]; // DIY grupal: lunes y jueves
+const DIY_GROUP_CAPACITY = 4; // perros por grupo
 const TRAINER_WHATSAPP_NUMBER = '34621361191'; // número real del adiestrador/negocio, NUNCA el del cliente
 const MAX_DOGS = 2; // límite de perros por cuenta/suscripción
 const RESID_PRICE_FIRST_DOG = 20; // €/noche
@@ -617,8 +631,8 @@ const SERVICES = [
   {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30},
   {id:'bono2', name:'Bono 2 sesiones', info:'2 sesiones de adiestramiento', price:50},
   {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento', price:80},
-  {id:'diyg', name:'DIY grupal', info:'Mensual, clases en grupo', price:100},
-  {id:'diyi', name:'DIY individual', info:'Mensual, clases individuales', price:150},
+  {id:'diyg', name:'DIY grupal', info:'Mensual · lunes y jueves, grupo de 18:00–19:00 o 19:00–20:00 (máx. 4 perros por grupo)', price:100, fixedSchedule:true},
+  {id:'diyi', name:'DIY individual', info:'Mensual · lunes y jueves de 17:00 a 18:00', price:150, fixedSchedule:true},
   {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true},
 ];
 
@@ -1073,7 +1087,7 @@ function renderXpServices(){
 }
 function chooseService(id){
   selectedService = SERVICES.find(s=>s.id===id);
-  nav('screenXpBooking');
+  nav(selectedService.fixedSchedule ? 'screenDiyBooking' : 'screenXpBooking');
 }
 let trainingSel = {date:null, hour:null, dogId:null};
 function renderXpBooking(){
@@ -1143,6 +1157,86 @@ function payTrainingBooking(){
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.${waNote}`, read:false});
   saveState();
   alert('¡Reserva confirmada y pagada (simulado)!');
+  goHome();
+}
+
+/* ---------------- DIY (horario fijo, sin calendario libre) ---------------- */
+function diyGroupOccupancy(groupId){
+  let count=0;
+  S.clients.forEach(cl=>{
+    cl.bookingsTraining.forEach(b=>{ if(b.paid && b.diyServiceId==='diyg' && b.diyGroup===groupId) count++; });
+  });
+  return count;
+}
+let diySel = {dogId:null, group:null};
+function renderDiyBooking(){
+  const c = activeClient();
+  diySel = {dogId: selectedDog(c).id, group: selectedService.id==='diyg' ? null : 'individual'};
+  document.getElementById('diyBookingTitle').textContent = selectedService.name;
+
+  const dogBox = document.getElementById('diyDogChoice');
+  if(c.dogs.length>1){
+    dogBox.innerHTML = `<p class="card-sub">¿Para qué perro es esta suscripción?</p><div class="hour-row">` +
+      c.dogs.map(d=>`<div class="hour-chip ${d.id===diySel.dogId?'selected':''}" data-dog="${d.id}" onclick="pickDiyDog('${d.id}')">${escapeHtml(d.name)}</div>`).join('') +
+      `</div>`;
+  } else {
+    dogBox.innerHTML = '';
+  }
+
+  const groupBox = document.getElementById('diyGroupChoice');
+  const noteBox = document.getElementById('diyScheduleNote');
+  if(selectedService.id==='diyg'){
+    groupBox.innerHTML = `<p class="card-sub">Elige grupo (lunes y jueves):</p><div class="hour-row">` +
+      DIY_GROUPS.map(g=>{
+        const occ = diyGroupOccupancy(g.id);
+        const full = occ>=DIY_GROUP_CAPACITY;
+        return `<div class="hour-chip ${full?'closed':''}" data-group="${g.id}" ${full?'':`onclick="pickDiyGroup('${g.id}')"`}>${g.label} (${occ}/${DIY_GROUP_CAPACITY})</div>`;
+      }).join('') + `</div>`;
+    noteBox.innerHTML = 'Horario cerrado: lunes y jueves, salvo festivos. Las clases que caen en festivo no se recuperan. Máximo 4 perros por grupo.';
+  } else {
+    groupBox.innerHTML = '';
+    noteBox.innerHTML = 'Horario cerrado: lunes y jueves de 17:00 a 18:00, salvo festivos. Las clases que caen en festivo no se recuperan.';
+  }
+  updateDiyPricebox();
+}
+function pickDiyDog(id){
+  diySel.dogId = id;
+  document.querySelectorAll('#diyDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.dog===id));
+}
+function pickDiyGroup(g){
+  diySel.group = g;
+  document.querySelectorAll('#diyGroupChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.group===g));
+  updateDiyPricebox();
+}
+function updateDiyPricebox(){
+  const c = activeClient();
+  const discount = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const final = (selectedService.price - discount).toFixed(2);
+  document.getElementById('diyPricebox').innerHTML = `
+    <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
+    <div class="line"><span>Descuento XP mensual</span><span>-${discount.toFixed(2)}€</span></div>
+    <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>`;
+  document.getElementById('diyPayBtn').disabled = !diySel.group;
+}
+function payDiyBooking(){
+  const c = activeClient();
+  if(!diySel.group) return;
+  const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const usedXp = Math.round(discountEur/XP_TO_EUR);
+  c.xpMonthly -= usedXp;
+  const schedule = selectedService.id==='diyg'
+    ? `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===diySel.group).label}`
+    : 'Lunes y jueves, 17:00–18:00';
+  c.bookingsTraining.push({
+    service:selectedService.name, dogId:diySel.dogId, diyServiceId:selectedService.id, diyGroup: selectedService.id==='diyg' ? diySel.group : null,
+    schedule, recurring:true,
+    price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
+    paid:true, createdSimDate:S.meta.simDate,
+  });
+  const dogName = c.dogs.find(d=>d.id===diySel.dogId).name;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Suscripción DIY confirmada', body:`${selectedService.name} para ${dogName}: ${schedule}.`, read:false});
+  saveState();
+  alert('¡Suscripción DIY confirmada y pagada (simulado)!');
   goHome();
 }
 
@@ -1247,7 +1341,11 @@ function payResidenceBooking(){
 }
 
 /* ---------------- AGENDA (cliente + admin) ---------------- */
-function trainingBookingsOnDate(c, date){ return c.bookingsTraining.filter(b=>b.date===date); }
+function trainingBookingsOnDate(c, date){
+  const dow = parseDate(date).getDay(); // 0=domingo ... 1=lunes ... 4=jueves
+  const isDiyDay = dow===1 || dow===4;
+  return c.bookingsTraining.filter(b=> b.date===date || (b.recurring && isDiyDay));
+}
 function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
 function clientBookingsOnDate(c, date){
   return [
@@ -1266,7 +1364,8 @@ function allBookingsOnDate(date){
 function agendaItemLine(c, it){
   if(it.kind==='training'){
     const dn = c.dogs.find(d=>d.id===it.b.dogId);
-    return `🕒 ${it.b.hour} — ${escapeHtml(it.b.service)}${dn?' ('+escapeHtml(dn.name)+')':''}`;
+    const when = it.b.recurring ? `🔁 ${it.b.schedule}` : `🕒 ${it.b.hour}`;
+    return `${when} — ${escapeHtml(it.b.service)}${dn?' ('+escapeHtml(dn.name)+')':''}`;
   }
   const names = joinNames(it.b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
   return `🏠 Residencia — ${escapeHtml(names)} (${humanDate(it.b.checkin)} → ${humanDate(it.b.checkout)})`;
@@ -1666,7 +1765,8 @@ function openClientModal(id){
   }).join('<hr class="sep">');
   const trainingHist = c.bookingsTraining.map(b=>{
     const dn = c.dogs.find(d=>d.id===b.dogId);
-    return `${humanDate(b.date)} ${b.hour} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''} (${b.paidAmount.toFixed(2)}€)`;
+    const when = b.recurring ? b.schedule : `${humanDate(b.date)} ${b.hour}`;
+    return `${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''} (${b.paidAmount.toFixed(2)}€)`;
   }).join('<br>') || 'Sin reservas';
   const residHist = c.bookingsResidencia.map(b=>{
     const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
@@ -1805,6 +1905,7 @@ const RENDERERS = {
   screenNotifications: renderNotifications,
   screenXpServices: renderXpServices,
   screenXpBooking: renderXpBooking,
+  screenDiyBooking: renderDiyBooking,
   screenResidence: renderResidence,
   screenSession: renderSession,
   screenConducta: renderConducta,
