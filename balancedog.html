@@ -131,11 +131,12 @@ img{max-width:100%;}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:6px 0 10px;position:relative;
 }
-.mascot-stage{position:relative;width:150px;height:120px;display:flex;align-items:flex-end;justify-content:center;}
+.mascot-stage{position:relative;width:140px;height:100px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
 .mascot-anim{
-  font-size:78px;line-height:1;transform-origin:bottom center;
-  animation:squash 2.6s ease-in-out infinite;
+  height:auto;display:block;transform-origin:bottom center;
+  animation:squash 1.3s ease-in-out infinite;
   filter:drop-shadow(0 8px 6px rgba(0,0,0,.15));
+  image-rendering:pixelated;image-rendering:-moz-crisp-edges;image-rendering:crisp-edges;
 }
 @keyframes squash{
   0%{transform:scaleY(1) scaleX(1);}
@@ -144,13 +145,6 @@ img{max-width:100%;}
   80%{transform:scaleY(.97) scaleX(1.02);}
   100%{transform:scaleY(1) scaleX(1);}
 }
-.mascot-badge{
-  position:absolute;top:-6px;right:6px;font-size:26px;
-  animation:float 2.2s ease-in-out infinite;
-}
-@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
-.mascot-label{font-weight:700;color:var(--accent-dark);font-size:13.5px;margin-top:2px;letter-spacing:.2px;}
-/* SPRITE-NOTE: sustituir .mascot-anim (emoji) y .mascot-badge (emoji) por los sprites/gif definitivos del Tamagotchi, uno por perro */
 
 /* ---------- cards ---------- */
 .card{
@@ -236,7 +230,7 @@ img{max-width:100%;}
 .svc-item .p{font-weight:800;color:var(--accent-dark);}
 .daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:10px 0;}
 .daycell{
-  background:#fff;border:1.5px solid var(--accent-light);border-radius:10px;padding:6px 2px;text-align:center;
+  position:relative;background:#fff;border:1.5px solid var(--accent-light);border-radius:10px;padding:6px 2px;text-align:center;
   font-size:11px;cursor:pointer;font-weight:700;
 }
 .daycell.closed{background:#f1e3e3;color:#b98;text-decoration:line-through;cursor:not-allowed;opacity:.6;}
@@ -244,6 +238,8 @@ img{max-width:100%;}
 .daycell.selected{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
 .daycell .dow{display:block;font-size:9px;color:var(--text-soft);font-weight:600;}
 .daycell.selected .dow{color:#fce;}
+.daycell.has-booking::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent-dark);}
+.daycell.selected.has-booking::after{background:#fff;}
 .hour-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
 .hour-chip{
   padding:7px 10px;border-radius:20px;border:1.5px solid var(--accent-light);background:#fff;
@@ -289,9 +285,12 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 .stat-box .n{font-size:22px;font-weight:800;color:var(--accent-dark);}
 .stat-box .l{font-size:11.5px;color:var(--text-soft);}
 .admin-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto;}
-.admin-daycell{background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
+.admin-daycell{position:relative;background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
 .admin-daycell.closed{background:#f1e3e3;color:#a95;}
 .admin-daycell small{display:block;font-size:8px;font-weight:600;color:var(--text-soft);}
+.admin-daycell.has-booking{border-color:var(--accent);}
+.admin-daycell.selected{background:var(--accent);color:#fff;}
+.admin-daycell .badge-count{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;font-size:9px;border-radius:8px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px;font-weight:800;}
 .ad-daytoggle{cursor:pointer;padding:2px 0 4px;border-radius:5px;}
 .ad-daytoggle:hover{background:var(--accent-light);}
 .admin-hours{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;justify-content:center;}
@@ -363,12 +362,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         <div class="dog-switcher hidden" id="dogSwitcher"></div>
 
         <div class="mascot-wrap">
-          <!-- SPRITE-NOTE: aquí irían los sprites/gif reales del Tamagotchi, sustituyendo a los emojis, uno por perro -->
           <div class="mascot-stage">
-            <div class="mascot-anim" id="mascotEmoji">🐶</div>
-            <div class="mascot-badge" id="mascotBadge">💖</div>
+            <img class="mascot-anim" id="mascotImg" src="assets/mascota/contento.png" style="width:92px;" alt="Tu perro">
           </div>
-          <div class="mascot-label" id="mascotLabel">Contento</div>
         </div>
 
         <div class="screen-pad" style="padding-top:0;">
@@ -402,6 +398,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <button class="tile" onclick="nav('screenPerfil')"><span class="ic">👤</span><span class="t">Mi perfil</span></button>
             <a class="tile" style="text-decoration:none;display:block;" id="whatsappTile" href="#" target="_blank" rel="noopener"><span class="ic">✉️</span><span class="t">WhatsApp</span></a>
           </div>
+          <button class="tile" style="width:100%;margin-top:8px;" onclick="nav('screenAgenda')"><span class="ic">🗓️</span><span class="t">Mi agenda</span></button>
         </div>
       </div>
 
@@ -409,6 +406,16 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenNotifications">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Notificaciones</h2></div>
         <div class="screen-pad" id="notifList"></div>
+      </div>
+
+      <!-- ============ AGENDA (cliente) ============ -->
+      <div class="screen" id="screenAgenda">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Mi agenda</h2></div>
+        <div class="screen-pad">
+          <p class="card-sub">Los días con un punto tienen algo reservado. Toca un día para ver el detalle.</p>
+          <div class="daygrid" id="agendaDayGrid"></div>
+          <div id="agendaDayDetail"></div>
+        </div>
       </div>
 
       <!-- ============ XP SERVICES ============ -->
@@ -565,6 +572,13 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
     </div>
 
     <div class="admin-section">
+      <h3>📅 Agenda de reservas</h3>
+      <p class="card-sub">Días con al menos una reserva de cualquier cliente (adiestramiento o residencia). Haz clic en un día para ver el detalle.</p>
+      <div class="admin-daygrid" id="adminAgendaGrid"></div>
+      <div id="adminAgendaDetail"></div>
+    </div>
+
+    <div class="admin-section">
       <h3>📊 Estadísticas</h3>
       <div class="stat-row">
         <div class="stat-box"><div class="n" id="statRevenue">0€</div><div class="l">Ingresos del mes (simulado)</div></div>
@@ -605,6 +619,7 @@ const SERVICES = [
   {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento', price:80},
   {id:'diyg', name:'DIY grupal', info:'Mensual, clases en grupo', price:100},
   {id:'diyi', name:'DIY individual', info:'Mensual, clases individuales', price:150},
+  {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true},
 ];
 
 const BASICO_SESSIONS = [
@@ -655,6 +670,20 @@ const EVAL_QUESTIONS = [
   '¿Realiza suficiente ejercicio físico a diario?',
 ];
 const EVAL_OPTS = ['Nunca','A veces','Frecuentemente','Siempre'];
+
+/* ---------------- mascota: sprites recortados (fondo transparente) por estado ----------------
+   Todos los PNG comparten la misma escala real (derivan del mismo lienzo original), por eso
+   cada uno lleva su propio ancho en px: así el perrito se ve siempre del mismo tamaño y solo
+   cambia el "bounding box" según los objetos/iconos que le acompañen en ese estado. */
+const MASCOT_IMAGES = {
+  contento:  {src:'assets/mascota/contento.png',   w:92},
+  entrenando:{src:'assets/mascota/entrenando.png', w:88},
+  dormido:   {src:'assets/mascota/dormido.png',    w:88},
+  triste:    {src:'assets/mascota/triste.png',     w:80},
+  vacaciones:{src:'assets/mascota/vacaciones.png', w:122},
+  jugando:   {src:'assets/mascota/jugando.png',    w:97},
+  graduado:  {src:'assets/mascota/graduado.png',   w:73},
+};
 
 /* ---------------- date utils ---------------- */
 function parseDate(s){ return new Date(s+'T00:00:00'); }
@@ -808,15 +837,15 @@ function isOnResidenceToday(c, dogId){
 function computePetStateDisplay(c, dog){
   if(dog._petTemp && !dog._petTemp.consumed){
     dog._petTemp.consumed = true; saveState();
-    if(dog._petTemp.key==='entrenando') return {key:'entrenando', label:'Entrenando', emoji:'🐶', badge:'🏋️'};
-    if(dog._petTemp.key==='jugando') return {key:'jugando', label:'¡Jugando!', emoji:'🐶', badge:'🎾'};
-    if(dog._petTemp.key==='graduado') return {key:'graduado', label:'¡Graduado!', emoji:'🐶', badge:'🎓'};
+    if(dog._petTemp.key==='entrenando') return {key:'entrenando', label:'Entrenando'};
+    if(dog._petTemp.key==='jugando') return {key:'jugando', label:'¡Jugando!'};
+    if(dog._petTemp.key==='graduado') return {key:'graduado', label:'¡Graduado!'};
   }
-  if(isOnResidenceToday(c, dog.id)) return {key:'vacaciones', label:'De vacaciones', emoji:'🐶', badge:'🧳'};
+  if(isOnResidenceToday(c, dog.id)) return {key:'vacaciones', label:'De vacaciones'};
   const diff = daysBetween(c.lastEntryDate, S.meta.simDate);
-  if(diff<=0) return {key:'contento', label:'Contento', emoji:'🐶', badge:'💖'};
-  if(diff<=2) return {key:'dormido', label:'Durmiendo', emoji:'🐶', badge:'💤'};
-  return {key:'triste', label:'Triste', emoji:'🐶', badge:'🌧️'};
+  if(diff<=0) return {key:'contento', label:'Contento'};
+  if(diff<=2) return {key:'dormido', label:'Durmiendo'};
+  return {key:'triste', label:'Triste'};
 }
 
 /* ---------------- navigation ---------------- */
@@ -857,9 +886,12 @@ function renderHome(){
   }
 
   const ps = computePetStateDisplay(c, dog);
-  document.getElementById('mascotEmoji').textContent = ps.emoji;
-  document.getElementById('mascotBadge').textContent = ps.badge;
-  document.getElementById('mascotLabel').textContent = (c.dogs.length>1 ? dog.name+' · ' : '') + ps.label;
+  const sprite = MASCOT_IMAGES[ps.key];
+  const mascotImg = document.getElementById('mascotImg');
+  mascotImg.src = sprite.src;
+  mascotImg.style.width = sprite.w + 'px';
+  mascotImg.alt = 'Tu perro';
+  mascotImg.title = (c.dogs.length>1 ? dog.name+' — ' : '') + ps.label; // tooltip interno, no se muestra como texto en pantalla
 
   document.getElementById('xpMonthlyVal').textContent = c.xpMonthly + ' XP';
   document.getElementById('xpBankVal').textContent = c.xpBank + ' XP';
@@ -1107,7 +1139,8 @@ function payTrainingBooking(){
     price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
     paid:true, createdSimDate:S.meta.simDate,
   });
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.`, read:false});
+  const waNote = selectedService.isVideocall ? ` Recibirás la videollamada por WhatsApp a esa hora.` : '';
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.${waNote}`, read:false});
   saveState();
   alert('¡Reserva confirmada y pagada (simulado)!');
   goHome();
@@ -1211,6 +1244,91 @@ function payResidenceBooking(){
   saveState();
   alert('¡Reserva de residencia confirmada y pagada (simulado)! Tu hucha de XP se ha puesto a 0.');
   goHome();
+}
+
+/* ---------------- AGENDA (cliente + admin) ---------------- */
+function trainingBookingsOnDate(c, date){ return c.bookingsTraining.filter(b=>b.date===date); }
+function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
+function clientBookingsOnDate(c, date){
+  return [
+    ...trainingBookingsOnDate(c,date).map(b=>({kind:'training', b})),
+    ...residenceBookingsCoveringDate(c,date).map(b=>({kind:'residencia', b})),
+  ];
+}
+function allBookingsOnDate(date){
+  const items = [];
+  S.clients.forEach(cl=>{
+    trainingBookingsOnDate(cl,date).forEach(b=> items.push({client:cl, kind:'training', b}));
+    residenceBookingsCoveringDate(cl,date).forEach(b=> items.push({client:cl, kind:'residencia', b}));
+  });
+  return items;
+}
+function agendaItemLine(c, it){
+  if(it.kind==='training'){
+    const dn = c.dogs.find(d=>d.id===it.b.dogId);
+    return `🕒 ${it.b.hour} — ${escapeHtml(it.b.service)}${dn?' ('+escapeHtml(dn.name)+')':''}`;
+  }
+  const names = joinNames(it.b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
+  return `🏠 Residencia — ${escapeHtml(names)} (${humanDate(it.b.checkin)} → ${humanDate(it.b.checkout)})`;
+}
+
+let agendaSelectedDate = null;
+function renderAgenda(){
+  const c = activeClient();
+  const grid = document.getElementById('agendaDayGrid');
+  let html='';
+  for(let i=0;i<30;i++){
+    const d = addDays(S.meta.simDate, i);
+    const has = clientBookingsOnDate(c,d).length>0;
+    html += `<div class="daycell ${has?'has-booking':''}" data-date="${d}" onclick="pickAgendaDay('${d}')">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+  }
+  grid.innerHTML = html;
+  pickAgendaDay(S.meta.simDate);
+}
+function pickAgendaDay(d){
+  agendaSelectedDate = d;
+  document.querySelectorAll('#agendaDayGrid .daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  const c = activeClient();
+  const items = clientBookingsOnDate(c, d);
+  const box = document.getElementById('agendaDayDetail');
+  if(!items.length){
+    box.innerHTML = `<div class="note-box" style="margin-top:12px;">Sin reservas para el ${humanDate(d)}.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="card" style="margin-top:12px;"><div class="card-title">${humanDate(d)}</div>${
+    items.map(it=>`<div class="card-sub">${agendaItemLine(c, it)}</div>`).join('')
+  }</div>`;
+}
+
+let adminAgendaSelectedDate = null;
+function renderAdminAgenda(){
+  const grid = document.getElementById('adminAgendaGrid');
+  let html='';
+  for(let i=0;i<28;i++){
+    const d = addDays(S.meta.simDate, i);
+    const items = allBookingsOnDate(d);
+    html += `<div class="admin-daycell ${items.length?'has-booking':''}" data-date="${d}" onclick="pickAdminAgendaDay('${d}')">
+      ${parseDate(d).getDate()}<small>${dowLabel(d)}</small>${items.length?`<span class="badge-count">${items.length}</span>`:''}
+    </div>`;
+  }
+  grid.innerHTML = html;
+  pickAdminAgendaDay(adminAgendaSelectedDate || S.meta.simDate);
+}
+function pickAdminAgendaDay(d){
+  adminAgendaSelectedDate = d;
+  document.querySelectorAll('#adminAgendaGrid .admin-daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  const items = allBookingsOnDate(d);
+  const box = document.getElementById('adminAgendaDetail');
+  if(!items.length){
+    box.innerHTML = `<div class="note-box" style="margin-top:10px;">Sin reservas para el ${humanDate(d)}.</div>`;
+    return;
+  }
+  box.innerHTML = `<div style="margin-top:10px;">${
+    items.map(it=>{
+      const dogNames = joinNames(it.client.dogs.map(d=>d.name));
+      return `<div class="client-card" style="cursor:default;"><div><div class="nm">${escapeHtml(it.client.name)} · 🐶 ${escapeHtml(dogNames)}</div><div class="meta">${agendaItemLine(it.client, it)}</div></div></div>`;
+    }).join('')
+  }</div>`;
 }
 
 /* ---------------- NOTIFICATIONS ---------------- */
@@ -1438,6 +1556,7 @@ function renderAdmin(){
   document.getElementById('adminReadingInfo').textContent = `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`;
   document.getElementById('adminCapacity').value = S.admin.residenceCapacity;
   renderAdminCalendar();
+  renderAdminAgenda();
   renderAdminStats();
   renderAdminClients();
 }
@@ -1620,6 +1739,7 @@ function debugResetState(){
 /* ---------------- RENDERERS MAP + BOOT ---------------- */
 const RENDERERS = {
   screenHome: renderHome,
+  screenAgenda: renderAgenda,
   screenNotifications: renderNotifications,
   screenXpServices: renderXpServices,
   screenXpBooking: renderXpBooking,
