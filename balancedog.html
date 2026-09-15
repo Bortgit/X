@@ -118,6 +118,14 @@ img{max-width:100%;}
 .header-row{display:flex;align-items:center;gap:10px;padding:18px 18px 4px;}
 .header-row h2{font-size:17px;}
 
+/* ---------- dog switcher ---------- */
+.dog-switcher{display:flex;gap:8px;padding:0 18px 10px;flex-wrap:wrap;}
+.dog-chip{
+  background:var(--card);border:2px solid var(--accent-light);border-radius:20px;
+  padding:6px 14px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--text-soft);
+}
+.dog-chip.active{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+
 /* ---------- mascot ---------- */
 .mascot-wrap{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -142,7 +150,7 @@ img{max-width:100%;}
 }
 @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
 .mascot-label{font-weight:700;color:var(--accent-dark);font-size:13.5px;margin-top:2px;letter-spacing:.2px;}
-/* SPRITE-NOTE: sustituir .mascot-anim (emoji) y .mascot-badge (emoji) por los sprites/gif definitivos del Tamagotchi */
+/* SPRITE-NOTE: sustituir .mascot-anim (emoji) y .mascot-badge (emoji) por los sprites/gif definitivos del Tamagotchi, uno por perro */
 
 /* ---------- cards ---------- */
 .card{
@@ -167,6 +175,7 @@ img{max-width:100%;}
   background:var(--accent);
 }
 .btn:hover{background:var(--accent-dark);}
+.btn:disabled{opacity:.55;cursor:not-allowed;}
 .btn-outline{background:transparent;border:2px solid var(--accent);color:var(--accent-dark);}
 .btn-danger{background:var(--danger);}
 .btn-sm{padding:8px 10px;font-size:12.5px;border-radius:10px;}
@@ -331,7 +340,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         <div class="screen-pad">
           <div class="header-row"><h2>🐾 Bienvenido a BalanceDog</h2></div>
           <div class="card">
-            <p class="card-sub">Antes de empezar, cuéntanos un poco sobre ti y tu perro.</p>
+            <p class="card-sub">Antes de empezar, cuéntanos un poco sobre ti y tu perro. (Podrás añadir un segundo perro más adelante desde tu perfil, hasta el límite de tu suscripción).</p>
             <div class="field"><label>Nombre y apellidos</label><input id="obName" placeholder="Ej. Laura Gómez"></div>
             <div class="field"><label>Teléfono</label><input id="obPhone" placeholder="Ej. 600 111 222"></div>
             <div class="field"><label>Dirección</label><input id="obAddress" placeholder="Calle, número, ciudad"></div>
@@ -351,8 +360,10 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <button class="bell-btn" onclick="nav('screenNotifications')">🔔<span class="bell-badge hidden" id="bellBadge">0</span></button>
         </div>
 
+        <div class="dog-switcher hidden" id="dogSwitcher"></div>
+
         <div class="mascot-wrap">
-          <!-- SPRITE-NOTE: aquí irían los sprites/gif reales del Tamagotchi, sustituyendo a los emojis -->
+          <!-- SPRITE-NOTE: aquí irían los sprites/gif reales del Tamagotchi, sustituyendo a los emojis, uno por perro -->
           <div class="mascot-stage">
             <div class="mascot-anim" id="mascotEmoji">🐶</div>
             <div class="mascot-badge" id="mascotBadge">💖</div>
@@ -404,7 +415,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenXpServices">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Canjear XP mensual</h2></div>
         <div class="screen-pad">
-          <div class="pricebox">Tienes <b id="xpServicesAvail">0 XP</b> disponibles este mes (equivalen a <b id="xpServicesEur">0€</b> de descuento).</div>
+          <div class="pricebox">Tienes <b id="xpServicesAvail">0 XP</b> disponibles este mes (equivalen a <b id="xpServicesEur">0€</b> de descuento). Este saldo es único por cuenta, no por perro.</div>
           <div id="svcList"></div>
         </div>
       </div>
@@ -413,6 +424,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenXpBooking">
         <div class="header-row"><button class="back-btn" onclick="nav('screenXpServices')">← Volver</button><h2 id="bookingSvcTitle">Reservar</h2></div>
         <div class="screen-pad">
+          <div id="trainingDogChoice"></div>
           <p class="card-sub">Elige un día y una hora disponibles.</p>
           <div class="daygrid" id="trainingDayGrid"></div>
           <div class="hour-row" id="trainingHourRow"></div>
@@ -425,7 +437,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenResidence">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Reservar residencia</h2></div>
         <div class="screen-pad">
-          <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche · aforo simulado por el admin.</div>
+          <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche el primer perro, 10€/noche el segundo si van juntos · aforo simulado por el admin.</div>
+          <div id="residDogChoice"></div>
           <div class="field"><label>Entrada</label><input type="date" id="residCheckin"></div>
           <div class="field"><label>Salida</label><input type="date" id="residCheckout"></div>
           <button class="btn btn-outline" onclick="checkResidenceAvailability()">Comprobar disponibilidad</button>
@@ -451,15 +464,15 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenBlocked">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Sesión no disponible</h2></div>
         <div class="screen-pad">
-          <div class="card"><div class="card-title">⏳ Ya has completado tu sesión de hoy</div>
-          <div class="card-sub">Solo se puede realizar una sesión de adiestramiento/conducta al día. La siguiente sesión estará disponible mañana (00:00).</div></div>
+          <div class="card"><div class="card-title">⏳ Este perro ya ha completado su sesión de hoy</div>
+          <div class="card-sub">Cada perro puede realizar una sesión de adiestramiento/conducta al día. La siguiente sesión de este perro estará disponible mañana (00:00).</div></div>
           <button class="btn" onclick="goHome()">Volver a inicio</button>
         </div>
       </div>
 
       <!-- ============ CONDUCTA LIST ============ -->
       <div class="screen" id="screenConducta">
-        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Conducta</h2></div>
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2 id="conductaDogLabel">Conducta</h2></div>
         <div class="screen-pad" id="conductaList"></div>
       </div>
 
@@ -487,28 +500,34 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <button class="btn btn-danger btn-sm" style="margin-top:10px;" onclick="unsubscribe()">Darme de baja</button>
           </div>
           <div class="card">
+            <div class="card-title" style="font-size:13px;">Mis datos</div>
             <div class="field"><label>Nombre y apellidos</label><input id="pfName"></div>
             <div class="field"><label>Teléfono</label><input id="pfPhone"></div>
             <div class="field"><label>Dirección</label><input id="pfAddress"></div>
-            <div class="field"><label>Nombre del perro</label><input id="pfDogName"></div>
-            <div class="field"><label>Raza</label><input id="pfDogBreed"></div>
-            <div class="field"><label>Edad del perro</label><input id="pfDogAge"></div>
-            <div class="field"><label>Notas del perro</label><textarea id="pfDogNotes"></textarea></div>
-            <button class="btn" onclick="saveProfile()">Guardar cambios</button>
           </div>
+          <div id="dogsSection"></div>
+          <button class="btn" onclick="saveProfile()">Guardar cambios</button>
+          <button class="btn btn-outline" id="addDogBtn" style="margin-top:10px;" onclick="nav('screenAddDog')">+ Añadir otro perro</button>
+        </div>
+      </div>
+
+      <!-- ============ AÑADIR PERRO ============ -->
+      <div class="screen" id="screenAddDog">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenPerfil')">← Volver</button><h2>Añadir otro perro</h2></div>
+        <div class="screen-pad">
           <div class="card">
-            <div class="card-title">Evaluación de conducta</div>
-            <div class="card-sub">Cuestionario de 48 preguntas (muestra reducida en este prototipo). Se realiza una única vez, al darte de alta.</div>
-            <button class="btn btn-outline" id="evalActionBtn" onclick="attemptEvaluacion()">Realizar evaluación</button>
-            <hr class="sep">
-            <div class="eval-hist" id="evalHistory"></div>
+            <p class="card-sub">Tu suscripción permite hasta 2 perros por cuenta.</p>
+            <div class="field"><label>Nombre del perro</label><input id="addDogName" placeholder="Ej. Nala"></div>
+            <div class="field"><label>Raza</label><input id="addDogBreed" placeholder="Ej. Labrador"></div>
+            <div class="field"><label>Edad del perro</label><input id="addDogAge" placeholder="Ej. 1 año"></div>
+            <button class="btn" onclick="submitAddDog()">Añadir perro</button>
           </div>
         </div>
       </div>
 
       <!-- ============ EVALUACION ============ -->
       <div class="screen" id="screenEvaluacion">
-        <div class="header-row"><button class="back-btn" onclick="nav('screenPerfil')">← Volver</button><h2>Evaluación</h2></div>
+        <div class="header-row"><button class="back-btn" onclick="nav('screenPerfil')">← Volver</button><h2 id="evaluacionDogLabel">Evaluación</h2></div>
         <div class="screen-pad">
           <p class="card-sub">Responde según el comportamiento habitual de tu perro. (Muestra de 8 de las 48 preguntas reales)</p>
           <div id="evalForm"></div>
@@ -540,7 +559,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <p class="card-sub">Haz clic en un día para abrir/cerrar la jornada completa. En adiestramiento puedes además abrir/cerrar franjas horarias sueltas.</p>
       <div class="admin-daygrid" id="adminCalGrid"></div>
       <div class="field" style="max-width:220px;margin-top:6px;" id="capacityField">
-        <label>Aforo máximo diario residencia</label>
+        <label>Aforo máximo diario residencia (por reserva, no por perro)</label>
         <input type="number" id="adminCapacity" min="0" onchange="adminSetCapacity(this.value)">
       </div>
     </div>
@@ -568,12 +587,17 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 <script>
 /* =========================================================================
    BALANCEDOG — PROTOTIPO FUNCIONAL (HTML/CSS/JS, sin backend, localStorage)
+   Cada cliente puede tener hasta MAX_DOGS perros. Cada perro tiene su propio
+   curso/progreso; el XP (mensual y hucha) es único y compartido por cuenta.
    ========================================================================= */
 
-const STORAGE_KEY = 'balancedog_state_v1';
+const STORAGE_KEY = 'balancedog_state_v2';
 const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
 const FIXED_HOURS = ['09:00','11:00','13:00','17:00','19:00'];
 const TRAINER_WHATSAPP_NUMBER = '34621361191'; // número real del adiestrador/negocio, NUNCA el del cliente
+const MAX_DOGS = 2; // límite de perros por cuenta/suscripción
+const RESID_PRICE_FIRST_DOG = 20; // €/noche
+const RESID_PRICE_SECOND_DOG = 10; // €/noche, solo si se reserva junto al primero
 
 const SERVICES = [
   {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30},
@@ -644,20 +668,17 @@ function humanDate(s){
   return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
 }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function joinNames(arr){
+  if(arr.length<=1) return arr[0]||'';
+  return arr.slice(0,-1).join(', ') + ' y ' + arr[arr.length-1];
+}
+function uid(prefix){ return prefix + Math.random().toString(36).slice(2,9); }
 
 /* ---------------- default state ---------------- */
-function makeClient(over){
+function makeDog(over){
   const base = {
-    id:'c1', name:'Laura Gómez', phone:'600 111 222', address:'Calle Mayor 12, Madrid',
-    dogName:'Toby', dogBreed:'Border Collie', dogAge:'3 años', dogNotes:'',
-    onboarded:true,
-    subscriptionStatus:'active',
-    lastEntryDate:'2026-09-15',
-    lastTrainingSessionDate:'',
-    xpMonthly:150, xpMonthlyMonth:'2026-09',
-    xpBank:320,
-    lecturaClaimedIds:[],
-    evalReenabled:false,
+    id: uid('d'),
+    name:'Toby', breed:'Border Collie', age:'3 años', notes:'',
     courses:{
       basico:{unlocked:true, completed:false, currentSession:1, totalSessions:BASICO_SESSIONS.length},
       avanzado:{unlocked:false, completed:false, currentSession:1, totalSessions:AVANZADO_SESSIONS.length},
@@ -668,45 +689,81 @@ function makeClient(over){
       {id:'timbre', name:'Reactividad al timbre', status:'not_started', currentSession:1, totalSessions:BEHAVIOR_TEMPLATE.length},
     ],
     activeBehaviorId:null,
-    evaluations:[{date:'2026-08-26'}],
+    lastTrainingSessionDate:'',
+    evaluations:[],
+    evalReenabled:false,
+    _petTemp:null,
+  };
+  return Object.assign(base, over||{});
+}
+
+function makeClient(over){
+  const base = {
+    id:'c1', name:'Laura Gómez', phone:'600 111 222', address:'Calle Mayor 12, Madrid',
+    onboarded:true,
+    subscriptionStatus:'active',
+    lastEntryDate:'2026-09-15',
+    lastXpGrantedDate:'',
+    xpMonthly:150, xpMonthlyMonth:'2026-09',
+    xpBank:320,
+    lecturaClaimedIds:[],
     notifications:[
-      {id:'n1', date:'2026-09-15', title:'¡Nueva sesión disponible!', body:'Ya puedes completar tu próxima sesión de adiestramiento básico.', read:false},
-      {id:'n2', date:'2026-09-12', title:'Nueva sesión de conducta disponible', body:'Cuando termines el básico se desbloqueará la sección de conducta.', read:false},
+      {id:'n1', date:'2026-09-15', title:'¡Nueva sesión disponible!', body:'Ya puedes completar la próxima sesión de adiestramiento de tus perros.', read:false},
+      {id:'n2', date:'2026-09-12', title:'Nueva sesión de conducta disponible', body:'Cuando un perro termine el básico se desbloqueará su sección de conducta.', read:false},
       {id:'n3', date:'2026-09-08', title:'¡Has ganado 25 XP!', body:'Completaste una sesión de adiestramiento. Sigue así.', read:true},
       {id:'n4', date:'2026-08-30', title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. ¡Empecemos a entrenar!', read:true},
     ],
     bookingsTraining:[],
     bookingsResidencia:[],
+    dogs:[ makeDog({}) ],
   };
-  return Object.assign(base, over||{});
+  const merged = Object.assign(base, over||{});
+  if(!merged.selectedDogId) merged.selectedDogId = merged.dogs[0].id;
+  return merged;
 }
 
 function makeDefaultState(){
   const simDate = '2026-09-15';
-  const clientB = makeClient({
-    id:'c2', name:'Marcos Ruiz', dogName:'Luna', dogBreed:'Labrador', dogAge:'2 años',
-    subscriptionStatus:'grace', xpMonthly:60, xpBank:0,
+  const dogToby = makeDog({name:'Toby', breed:'Border Collie', age:'3 años'});
+  const dogNala = makeDog({
+    name:'Nala', breed:'Cocker Spaniel', age:'2 años',
+    courses:{
+      basico:{unlocked:true, completed:true, currentSession:11, totalSessions:BASICO_SESSIONS.length},
+      avanzado:{unlocked:true, completed:false, currentSession:2, totalSessions:AVANZADO_SESSIONS.length},
+      conducta:{unlocked:true},
+    },
+  });
+  const clientA = makeClient({ dogs:[dogToby, dogNala], selectedDogId: dogToby.id });
+
+  const dogLuna1 = makeDog({name:'Luna', breed:'Labrador', age:'2 años',
     courses:{basico:{unlocked:true,completed:true,currentSession:11,totalSessions:BASICO_SESSIONS.length},
              avanzado:{unlocked:true,completed:false,currentSession:3,totalSessions:AVANZADO_SESSIONS.length},
-             conducta:{unlocked:true}},
-    notifications:[], evaluations:[],
+             conducta:{unlocked:true}}});
+  const dogLuna2 = makeDog({name:'Kira', breed:'Beagle', age:'1 año'});
+  const clientB = makeClient({
+    id:'c2', name:'Marcos Ruiz', dogs:[dogLuna1, dogLuna2], selectedDogId:dogLuna1.id,
+    subscriptionStatus:'grace', xpMonthly:60, xpBank:0,
+    notifications:[],
     bookingsResidencia:[
-      {checkin:addDays(simDate,3), checkout:addDays(simDate,6), nights:3, pricePerNight:20, total:60, discount:0, paidAmount:60, paid:true, createdSimDate:simDate}
+      {checkin:addDays(simDate,3), checkout:addDays(simDate,6), nights:3, dogIds:[dogLuna1.id], total:60, discount:0, paidAmount:60, paid:true, createdSimDate:simDate}
     ],
   });
-  const clientC = makeClient({
-    id:'c3', name:'Elena Ferrer', dogName:'Rocky', dogBreed:'Mestizo', dogAge:'5 años',
-    subscriptionStatus:'cancelled', xpMonthly:0, xpBank:0,
+
+  const dogRocky = makeDog({name:'Rocky', breed:'Mestizo', age:'5 años',
     courses:{basico:{unlocked:true,completed:false,currentSession:2,totalSessions:BASICO_SESSIONS.length},
              avanzado:{unlocked:false,completed:false,currentSession:1,totalSessions:AVANZADO_SESSIONS.length},
-             conducta:{unlocked:false}},
-    notifications:[], evaluations:[],
+             conducta:{unlocked:false}}});
+  const clientC = makeClient({
+    id:'c3', name:'Elena Ferrer', dogs:[dogRocky], selectedDogId:dogRocky.id,
+    subscriptionStatus:'cancelled', xpMonthly:0, xpBank:0,
+    notifications:[],
   });
+
   return {
     meta:{ simDate, view:'client', calTab:'training' },
     monthlyReading:{ id:'r1', title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
     admin:{ residenceCapacity:3, calendarClosures:{ training:{}, residencia:{} } },
-    clients:[ makeClient({}), clientB, clientC ],
+    clients:[ clientA, clientB, clientC ],
   };
 }
 
@@ -722,6 +779,7 @@ function loadState(){
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }
 function activeClient(){ return S.clients[0]; }
+function selectedDog(c){ return c.dogs.find(d=>d.id===c.selectedDogId) || c.dogs[0]; }
 
 /* ---------------- normalization (xp monthly expiry) ---------------- */
 function normalize(){
@@ -732,18 +790,29 @@ function normalize(){
   saveState();
 }
 
-/* ---------------- pet state ---------------- */
-function isOnResidenceToday(c){
-  return c.bookingsResidencia.some(b=> b.paid && S.meta.simDate>=b.checkin && S.meta.simDate<b.checkout );
+/* ---------------- per-dog / per-account helpers ---------------- */
+function usedSessionToday(dog){ return dog.lastTrainingSessionDate === S.meta.simDate; }
+function xpAlreadyGrantedToday(c){ return c.lastXpGrantedDate === S.meta.simDate; }
+function dogHasCompletedAll(dog){
+  return dog.courses.basico.completed && dog.courses.avanzado.completed
+    && dog.behaviorProblems.every(b=>b.status==='completed');
 }
-function computePetStateDisplay(c){
-  if(c._petTemp && !c._petTemp.consumed){
-    c._petTemp.consumed = true; saveState();
-    if(c._petTemp.key==='entrenando') return {key:'entrenando', label:'Entrenando', emoji:'🐶', badge:'🏋️'};
-    if(c._petTemp.key==='jugando') return {key:'jugando', label:'¡Jugando!', emoji:'🐶', badge:'🎾'};
-    if(c._petTemp.key==='graduado') return {key:'graduado', label:'¡Graduado!', emoji:'🐶', badge:'🎓'};
+function accountEligibleForReadingBonus(c){ return c.dogs.every(dogHasCompletedAll); }
+function readingBonusAmount(c){ return c.dogs.length>=2 ? 1300 : 800; }
+function canDoEvaluation(dog){ return dog.evaluations.length===0 || dog.evalReenabled; }
+
+/* ---------------- pet state (per perro) ---------------- */
+function isOnResidenceToday(c, dogId){
+  return c.bookingsResidencia.some(b=> b.paid && b.dogIds.includes(dogId) && S.meta.simDate>=b.checkin && S.meta.simDate<b.checkout );
+}
+function computePetStateDisplay(c, dog){
+  if(dog._petTemp && !dog._petTemp.consumed){
+    dog._petTemp.consumed = true; saveState();
+    if(dog._petTemp.key==='entrenando') return {key:'entrenando', label:'Entrenando', emoji:'🐶', badge:'🏋️'};
+    if(dog._petTemp.key==='jugando') return {key:'jugando', label:'¡Jugando!', emoji:'🐶', badge:'🎾'};
+    if(dog._petTemp.key==='graduado') return {key:'graduado', label:'¡Graduado!', emoji:'🐶', badge:'🎓'};
   }
-  if(isOnResidenceToday(c)) return {key:'vacaciones', label:'De vacaciones', emoji:'🐶', badge:'🧳'};
+  if(isOnResidenceToday(c, dog.id)) return {key:'vacaciones', label:'De vacaciones', emoji:'🐶', badge:'🧳'};
   const diff = daysBetween(c.lastEntryDate, S.meta.simDate);
   if(diff<=0) return {key:'contento', label:'Contento', emoji:'🐶', badge:'💖'};
   if(diff<=2) return {key:'dormido', label:'Durmiendo', emoji:'🐶', badge:'💤'};
@@ -770,40 +839,58 @@ function goHome(){
 /* ---------------- HOME render ---------------- */
 function renderHome(){
   const c = activeClient();
-  document.getElementById('homeGreeting').textContent = `Hola, ${c.name.split(' ')[0]} y ${c.dogName}`;
+  const dog = selectedDog(c);
+  const namesJoined = joinNames(c.dogs.map(d=>d.name));
+  document.getElementById('homeGreeting').textContent = `Hola, ${c.name.split(' ')[0]} y ${namesJoined}`;
+
   const unread = c.notifications.filter(n=>!n.read).length;
   const badge = document.getElementById('bellBadge');
   if(unread>0){ badge.textContent=unread; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
 
-  const ps = computePetStateDisplay(c);
+  const switcher = document.getElementById('dogSwitcher');
+  if(c.dogs.length>1){
+    switcher.classList.remove('hidden');
+    switcher.innerHTML = c.dogs.map(d=>`<button class="dog-chip ${d.id===c.selectedDogId?'active':''}" onclick="selectDog('${d.id}')">🐶 ${escapeHtml(d.name)}</button>`).join('');
+  } else {
+    switcher.classList.add('hidden');
+    switcher.innerHTML = '';
+  }
+
+  const ps = computePetStateDisplay(c, dog);
   document.getElementById('mascotEmoji').textContent = ps.emoji;
   document.getElementById('mascotBadge').textContent = ps.badge;
-  document.getElementById('mascotLabel').textContent = ps.label;
+  document.getElementById('mascotLabel').textContent = (c.dogs.length>1 ? dog.name+' · ' : '') + ps.label;
 
   document.getElementById('xpMonthlyVal').textContent = c.xpMonthly + ' XP';
   document.getElementById('xpBankVal').textContent = c.xpBank + ' XP';
 
   document.getElementById('courseRow').innerHTML = renderCourseTile('basico')+renderCourseTile('avanzado')+renderCourseTile('conducta');
 
-  const waText = encodeURIComponent(`Hola, soy ${c.name}. Tengo una consulta sobre ${c.dogName}.`);
+  const waText = encodeURIComponent(`Hola, soy ${c.name}. Tengo una consulta sobre ${namesJoined}.`);
   document.getElementById('whatsappTile').href = `https://wa.me/${TRAINER_WHATSAPP_NUMBER}?text=${waText}`;
 }
-function usedSessionToday(c){ return c.lastTrainingSessionDate === S.meta.simDate; }
+function selectDog(id){
+  const c = activeClient();
+  c.selectedDogId = id;
+  saveState();
+  renderHome();
+}
 function renderCourseTile(key){
   const c = activeClient();
+  const dog = selectedDog(c);
   if(key==='conducta'){
-    const unlocked = c.courses.basico.completed;
+    const unlocked = dog.courses.basico.completed;
     if(!unlocked){
       return `<div class="tile course-tile locked"><span class="lock-ic">🔒</span><div class="info">Supera el adiestramiento básico para desbloquear</div></div>`;
     }
-    const active = c.behaviorProblems.find(b=>b.id===c.activeBehaviorId);
+    const active = dog.behaviorProblems.find(b=>b.id===dog.activeBehaviorId);
     let info;
     if(active) info = `${escapeHtml(active.name)}<br>Sesión ${active.currentSession} de ${active.totalSessions}`;
     else info = 'Elige un problema de conducta';
-    if(usedSessionToday(c)) info += '<br><b>Disponible mañana</b>';
+    if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
     return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">🧩 Conducta</div><div class="info">${info}</div></button>`;
   }
-  const course = c.courses[key];
+  const course = dog.courses[key];
   const total = course.totalSessions;
   const label = key==='basico' ? '🎯 Básico' : '🚀 Avanzado';
   if(key==='avanzado' && !course.unlocked){
@@ -815,30 +902,32 @@ function renderCourseTile(key){
   const sessions = key==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
   const exName = sessions[course.currentSession-1].name;
   let info = `Sesión ${course.currentSession} de ${total} — ${escapeHtml(exName)}`;
-  if(usedSessionToday(c)) info += '<br><b>Disponible mañana</b>';
+  if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
   else info += '<br>Toca para realizar la siguiente sesión';
   return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${label}</div><div class="info">${info}</div></button>`;
 }
 
 function openCourseSession(key){
   const c = activeClient();
-  if(usedSessionToday(c)){ nav('screenBlocked'); return; }
-  nav('screenSession', {mode:'course', course:key});
+  const dog = selectedDog(c);
+  if(usedSessionToday(dog)){ nav('screenBlocked'); return; }
+  nav('screenSession', {mode:'course', course:key, dogId:dog.id});
 }
 
 /* ---------------- SESSION render ---------------- */
 function renderSession(){
   const c = activeClient();
+  const dog = c.dogs.find(d=>d.id===navCtx.dogId);
   let sessionObj, label;
   if(navCtx.mode==='course'){
-    const course = c.courses[navCtx.course];
+    const course = dog.courses[navCtx.course];
     const arr = navCtx.course==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
     sessionObj = arr[course.currentSession-1];
-    label = (navCtx.course==='basico'?'Básico':'Avanzado') + ` · Sesión ${course.currentSession} de ${course.totalSessions}`;
+    label = (c.dogs.length>1 ? dog.name+' · ' : '') + (navCtx.course==='basico'?'Básico':'Avanzado') + ` · Sesión ${course.currentSession} de ${course.totalSessions}`;
   } else {
-    const bp = c.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
+    const bp = dog.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
     sessionObj = BEHAVIOR_TEMPLATE[bp.currentSession-1];
-    label = bp.name + ` · Sesión ${bp.currentSession} de ${bp.totalSessions}`;
+    label = (c.dogs.length>1 ? dog.name+' · ' : '') + bp.name + ` · Sesión ${bp.currentSession} de ${bp.totalSessions}`;
   }
   document.getElementById('sessionCourseLabel').textContent = label;
   document.getElementById('sessionTitle').textContent = sessionObj.name;
@@ -862,12 +951,14 @@ function renderSession(){
 
 function completeSession(result){
   const c = activeClient();
-  c.xpMonthly += 25;
-  c.lastTrainingSessionDate = S.meta.simDate;
+  const dog = c.dogs.find(d=>d.id===navCtx.dogId);
+  const grantXp = !xpAlreadyGrantedToday(c);
+  if(grantXp){ c.xpMonthly += 25; c.lastXpGrantedDate = S.meta.simDate; }
+  dog.lastTrainingSessionDate = S.meta.simDate;
   let petTemp = 'entrenando';
 
   if(navCtx.mode==='course'){
-    const course = c.courses[navCtx.course];
+    const course = dog.courses[navCtx.course];
     const arr = navCtx.course==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
     const kind = arr[course.currentSession-1].kind;
     if(kind==='juego') petTemp='jugando';
@@ -876,34 +967,38 @@ function completeSession(result){
       course.completed = true;
       petTemp = 'graduado';
       if(navCtx.course==='basico'){
-        c.courses.avanzado.unlocked = true;
-        c.courses.conducta.unlocked = true;
+        dog.courses.avanzado.unlocked = true;
+        dog.courses.conducta.unlocked = true;
       }
     }
   } else {
-    const bp = c.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
+    const bp = dog.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
     const kind = BEHAVIOR_TEMPLATE[bp.currentSession-1].kind;
     if(kind==='juego') petTemp='jugando';
     bp.currentSession += 1;
     if(bp.currentSession > bp.totalSessions){
       bp.status = 'completed';
       petTemp = 'graduado';
-      c.activeBehaviorId = null;
+      dog.activeBehaviorId = null;
     }
   }
-  c._petTemp = {key:petTemp, consumed:false};
+  dog._petTemp = {key:petTemp, consumed:false};
   saveState();
-  alert('¡Sesión completada! Has ganado 25 XP.');
+  alert(grantXp
+    ? '¡Sesión completada! Has ganado 25 XP.'
+    : '¡Sesión completada! Hoy ya se sumó el XP diario de la cuenta con otro perro, así que esta sesión no da XP extra (pero sí avanza el curso).');
   goHome();
 }
 
 /* ---------------- CONDUCTA ---------------- */
 function renderConducta(){
   const c = activeClient();
+  const dog = selectedDog(c);
+  document.getElementById('conductaDogLabel').textContent = c.dogs.length>1 ? 'Conducta — '+dog.name : 'Conducta';
   const list = document.getElementById('conductaList');
-  list.innerHTML = c.behaviorProblems.map(bp=>{
-    const isActive = c.activeBehaviorId===bp.id;
-    const blocked = c.activeBehaviorId && c.activeBehaviorId!==bp.id;
+  list.innerHTML = dog.behaviorProblems.map(bp=>{
+    const isActive = dog.activeBehaviorId===bp.id;
+    const blocked = dog.activeBehaviorId && dog.activeBehaviorId!==bp.id;
     let status = 'No iniciado';
     if(bp.status==='completed') status = 'Completado ✅';
     else if(isActive || bp.status==='in_progress') status = `En curso — Sesión ${bp.currentSession} de ${bp.totalSessions}`;
@@ -916,15 +1011,16 @@ function renderConducta(){
 }
 function selectBehavior(id){
   const c = activeClient();
-  const bp = c.behaviorProblems.find(b=>b.id===id);
+  const dog = selectedDog(c);
+  const bp = dog.behaviorProblems.find(b=>b.id===id);
   if(bp.status==='completed'){ alert('Este problema de conducta ya está completado.'); return; }
-  if(c.activeBehaviorId && c.activeBehaviorId!==id){
-    alert('Ya tienes un problema de conducta en curso. Termina todas sus sesiones antes de elegir otro.');
+  if(dog.activeBehaviorId && dog.activeBehaviorId!==id){
+    alert('Este perro ya tiene un problema de conducta en curso. Termina todas sus sesiones antes de elegir otro.');
     return;
   }
-  if(!c.activeBehaviorId){ c.activeBehaviorId=id; bp.status='in_progress'; saveState(); }
-  if(usedSessionToday(c)){ nav('screenBlocked'); return; }
-  nav('screenSession', {mode:'behavior', behaviorId:id});
+  if(!dog.activeBehaviorId){ dog.activeBehaviorId=id; bp.status='in_progress'; saveState(); }
+  if(usedSessionToday(dog)){ nav('screenBlocked'); return; }
+  nav('screenSession', {mode:'behavior', behaviorId:id, dogId:dog.id});
 }
 
 /* ---------------- XP MENSUAL exchange ---------------- */
@@ -947,10 +1043,21 @@ function chooseService(id){
   selectedService = SERVICES.find(s=>s.id===id);
   nav('screenXpBooking');
 }
-let trainingSel = {date:null, hour:null};
+let trainingSel = {date:null, hour:null, dogId:null};
 function renderXpBooking(){
-  trainingSel = {date:null, hour:null};
+  const c = activeClient();
+  trainingSel = {date:null, hour:null, dogId: selectedDog(c).id};
   document.getElementById('bookingSvcTitle').textContent = 'Reservar: ' + selectedService.name;
+
+  const dogBox = document.getElementById('trainingDogChoice');
+  if(c.dogs.length>1){
+    dogBox.innerHTML = `<p class="card-sub">¿Para qué perro es esta sesión?</p><div class="hour-row">` +
+      c.dogs.map(d=>`<div class="hour-chip ${d.id===trainingSel.dogId?'selected':''}" data-dog="${d.id}" onclick="pickTrainingDog('${d.id}')">${escapeHtml(d.name)}</div>`).join('') +
+      `</div>`;
+  } else {
+    dogBox.innerHTML = '';
+  }
+
   const grid = document.getElementById('trainingDayGrid');
   let html='';
   for(let i=0;i<21;i++){
@@ -962,6 +1069,10 @@ function renderXpBooking(){
   document.getElementById('trainingHourRow').innerHTML='';
   document.getElementById('trainingPricebox').innerHTML='';
   document.getElementById('trainingPayBtn').disabled = true;
+}
+function pickTrainingDog(id){
+  trainingSel.dogId = id;
+  document.querySelectorAll('#trainingDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.dog===id));
 }
 function pickTrainingDay(d){
   trainingSel.date = d; trainingSel.hour=null;
@@ -992,7 +1103,7 @@ function payTrainingBooking(){
   const usedXp = Math.round(discountEur/XP_TO_EUR);
   c.xpMonthly -= usedXp;
   c.bookingsTraining.push({
-    date:trainingSel.date, hour:trainingSel.hour, service:selectedService.name,
+    date:trainingSel.date, hour:trainingSel.hour, service:selectedService.name, dogId:trainingSel.dogId,
     price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
     paid:true, createdSimDate:S.meta.simDate,
   });
@@ -1004,14 +1115,33 @@ function payTrainingBooking(){
 
 /* ---------------- HUCHA / residencia ---------------- */
 function openResidenceFromBank(){ nav('screenResidence'); }
+let residDogSelection = null; // dogId o 'both'
 function renderResidence(){
   const c = activeClient();
   document.getElementById('residBankVal').textContent = c.xpBank + ' XP';
   document.getElementById('residBankEur').textContent = (c.xpBank*XP_TO_EUR).toFixed(2)+'€';
+
+  const box = document.getElementById('residDogChoice');
+  if(c.dogs.length>1){
+    residDogSelection = c.dogs[0].id;
+    box.innerHTML = `<p class="card-sub">¿Qué perro(s) vienen a la residencia?</p><div class="hour-row">` +
+      c.dogs.map(d=>`<div class="hour-chip ${residDogSelection===d.id?'selected':''}" data-sel="${d.id}" onclick="pickResidDog('${d.id}')">${escapeHtml(d.name)} (${RESID_PRICE_FIRST_DOG}€/noche)</div>`).join('') +
+      `<div class="hour-chip" data-sel="both" onclick="pickResidDog('both')">Ambos (${RESID_PRICE_FIRST_DOG+RESID_PRICE_SECOND_DOG}€/noche)</div>` +
+      `</div>`;
+  } else {
+    residDogSelection = c.dogs[0].id;
+    box.innerHTML = '';
+  }
+
   const min = S.meta.simDate;
   const max = addDays(S.meta.simDate, 365);
   const ci = document.getElementById('residCheckin'); ci.min=min; ci.max=max; ci.value=addDays(min,1);
   const co = document.getElementById('residCheckout'); co.min=min; co.max=max; co.value=addDays(min,2);
+  document.getElementById('residResult').innerHTML='';
+}
+function pickResidDog(sel){
+  residDogSelection = sel;
+  document.querySelectorAll('#residDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.sel===sel));
   document.getElementById('residResult').innerHTML='';
 }
 function nightsInRange(checkin, checkout){
@@ -1020,6 +1150,8 @@ function nightsInRange(checkin, checkout){
   return n;
 }
 function nightOccupancy(night){
+  // El aforo cuenta reservas (plazas), no perros: una reserva conjunta de los
+  // dos perros del mismo cliente consume 1 sola plaza esa noche.
   let count=0;
   S.clients.forEach(cl=>{
     cl.bookingsResidencia.forEach(b=>{
@@ -1028,7 +1160,9 @@ function nightOccupancy(night){
   });
   return count;
 }
+let pendingResidBooking = null;
 function checkResidenceAvailability(){
+  const c = activeClient();
   const checkin = document.getElementById('residCheckin').value;
   const checkout = document.getElementById('residCheckout').value;
   const resultBox = document.getElementById('residResult');
@@ -1046,23 +1180,34 @@ function checkResidenceAvailability(){
     resultBox.innerHTML = `<div class="note-box">No disponible en estas fechas:<br>${problems.map(escapeHtml).join('<br>')}</div>`;
     return;
   }
-  const c = activeClient();
-  const total = nights.length*20;
+  const dogIds = residDogSelection==='both' ? c.dogs.map(d=>d.id) : [residDogSelection];
+  const pricePerNight = dogIds.length>1 ? RESID_PRICE_FIRST_DOG+RESID_PRICE_SECOND_DOG : RESID_PRICE_FIRST_DOG;
+  const total = nights.length*pricePerNight;
   const discount = Math.min(c.xpBank*XP_TO_EUR, total);
   const final = (total-discount).toFixed(2);
+  const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
+  pendingResidBooking = {checkin, checkout, nights:nights.length, dogIds, total, discount};
+  const priceLine = dogIds.length>1
+    ? `${nights.length} noche(s) x (${RESID_PRICE_FIRST_DOG}€ + ${RESID_PRICE_SECOND_DOG}€)`
+    : `${nights.length} noche(s) x ${RESID_PRICE_FIRST_DOG}€`;
   resultBox.innerHTML = `
     <div class="pricebox">
-      <div class="line"><span>${nights.length} noche(s) x 20€</span><span>${total.toFixed(2)}€</span></div>
+      <div class="line"><span>Perro(s): ${escapeHtml(dogNames)}</span><span></span></div>
+      <div class="line"><span>${priceLine}</span><span>${total.toFixed(2)}€</span></div>
       <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
       <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
     </div>
-    <button class="btn" onclick="payResidenceBooking('${checkin}','${checkout}',${nights.length},${total},${discount})">Reservar y pagar (simulado)</button>`;
+    <button class="btn" onclick="payResidenceBooking()">Reservar y pagar (simulado)</button>`;
 }
-function payResidenceBooking(checkin, checkout, nights, total, discount){
+function payResidenceBooking(){
   const c = activeClient();
-  c.bookingsResidencia.push({checkin, checkout, nights, pricePerNight:20, total, discount, paidAmount:total-discount, paid:true, createdSimDate:S.meta.simDate});
+  const b = pendingResidBooking;
+  if(!b) return;
+  c.bookingsResidencia.push({checkin:b.checkin, checkout:b.checkout, nights:b.nights, dogIds:b.dogIds, total:b.total, discount:b.discount, paidAmount:b.total-b.discount, paid:true, createdSimDate:S.meta.simDate});
   c.xpBank = 0;
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia confirmada', body:`Del ${humanDate(checkin)} al ${humanDate(checkout)}.`, read:false});
+  const dogNames = joinNames(b.dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia confirmada', body:`${dogNames}: del ${humanDate(b.checkin)} al ${humanDate(b.checkout)}.`, read:false});
+  pendingResidBooking = null;
   saveState();
   alert('¡Reserva de residencia confirmada y pagada (simulado)! Tu hucha de XP se ha puesto a 0.');
   goHome();
@@ -1100,15 +1245,12 @@ function renderExtra(){
 }
 
 /* ---------------- LECTURA ---------------- */
-function hasCompletedAllContent(c){
-  return c.courses.basico.completed && c.courses.avanzado.completed
-    && c.behaviorProblems.every(b=>b.status==='completed');
-}
 function renderLectura(){
   const c = activeClient();
   const r = S.monthlyReading;
   const claimed = c.lecturaClaimedIds.includes(r.id);
-  const eligible = hasCompletedAllContent(c);
+  const eligible = accountEligibleForReadingBonus(c);
+  const bonus = readingBonusAmount(c);
   let preview;
   if(r.dataUrl && r.mime && r.mime.startsWith('image/')){
     preview = `<img src="${r.dataUrl}" style="border-radius:14px;">`;
@@ -1119,11 +1261,12 @@ function renderLectura(){
   }
   let action;
   if(!eligible){
-    action = `<div class="note-box">Los 800 XP de esta lectura solo se otorgan a quienes ya han completado todo el contenido de la app (básico, avanzado y todos los problemas de conducta). Mientras tanto, sigue ganando 25 XP por sesión.</div>`;
+    const pending = c.dogs.filter(d=>!dogHasCompletedAll(d)).map(d=>d.name).join(', ');
+    action = `<div class="note-box">Los XP de esta lectura (${bonus} XP) solo se otorgan cuando todos tus perros han completado todo el contenido (básico, avanzado y toda la conducta). Aún falta: ${escapeHtml(pending)}. Mientras tanto, sigue ganando 25 XP por sesión.</div>`;
   } else if(claimed){
     action = `<button class="btn" style="margin-top:14px;" disabled>Ya reclamada esta lectura ✅</button>`;
   } else {
-    action = `<button class="btn" style="margin-top:14px;" onclick="claimReading()">Marcar como leída y reclamar 800 XP</button>`;
+    action = `<button class="btn" style="margin-top:14px;" onclick="claimReading()">Marcar como leída y reclamar ${bonus} XP</button>`;
   }
   document.getElementById('lecturaBody').innerHTML = `
     <div class="card">
@@ -1136,12 +1279,14 @@ function renderLectura(){
 function claimReading(){
   const c = activeClient();
   const r = S.monthlyReading;
-  if(!hasCompletedAllContent(c) || c.lecturaClaimedIds.includes(r.id)) return;
-  c.xpBank += 800;
+  if(!accountEligibleForReadingBonus(c) || c.lecturaClaimedIds.includes(r.id)) return;
+  const bonus = readingBonusAmount(c);
+  c.xpBank += bonus;
   c.lecturaClaimedIds.push(r.id);
-  c._petTemp = {key:'graduado', consumed:false};
+  const dog = selectedDog(c);
+  dog._petTemp = {key:'graduado', consumed:false};
   saveState();
-  alert('¡Has ganado 800 XP para tu hucha!');
+  alert(`¡Has ganado ${bonus} XP para tu hucha!`);
   renderLectura();
 }
 
@@ -1151,45 +1296,56 @@ function renderPerfil(){
   document.getElementById('pfName').value = c.name;
   document.getElementById('pfPhone').value = c.phone;
   document.getElementById('pfAddress').value = c.address;
-  document.getElementById('pfDogName').value = c.dogName;
-  document.getElementById('pfDogBreed').value = c.dogBreed;
-  document.getElementById('pfDogAge').value = c.dogAge;
-  document.getElementById('pfDogNotes').value = c.dogNotes;
   const badge = document.getElementById('subBadge');
   const map = {active:['Activa','badge-active'], pending:['Pendiente de pago','badge-pending'], grace:['2 días de gracia','badge-grace'], cancelled:['Dada de baja','badge-cancelled']};
   const [txt,cls] = map[c.subscriptionStatus];
   badge.textContent = txt; badge.className='badge '+cls;
-  document.getElementById('evalHistory').innerHTML = c.evaluations.length
-    ? 'Historial de evaluaciones:<br>' + c.evaluations.map(e=>humanDate(e.date)).join('<br>')
-    : 'Sin evaluaciones previas.';
-  const canEval = canDoEvaluation(c);
-  const evalBtn = document.getElementById('evalActionBtn');
-  evalBtn.disabled = !canEval;
-  evalBtn.classList.toggle('btn-outline', canEval);
-  if(!canEval) evalBtn.textContent = 'Evaluación inicial ya completada';
-  else evalBtn.textContent = c.evaluations.length===0 ? 'Realizar evaluación inicial' : 'Realizar nueva evaluación (habilitada por tu adiestrador)';
+
+  document.getElementById('dogsSection').innerHTML = c.dogs.map((dog,i)=>renderDogCard(dog,i)).join('');
+  document.getElementById('addDogBtn').classList.toggle('hidden', c.dogs.length>=MAX_DOGS);
 }
-function canDoEvaluation(c){ return c.evaluations.length===0 || c.evalReenabled; }
-function attemptEvaluacion(){
+function renderDogCard(dog, i){
+  const canEval = canDoEvaluation(dog);
+  const evalBtnLabel = !canEval ? 'Evaluación inicial ya completada' : (dog.evaluations.length===0 ? 'Realizar evaluación inicial' : 'Realizar nueva evaluación (habilitada por tu adiestrador)');
+  const hist = dog.evaluations.length
+    ? 'Historial de evaluaciones:<br>' + dog.evaluations.map(e=>humanDate(e.date)).join('<br>')
+    : 'Sin evaluaciones previas.';
+  return `<div class="card">
+    <div class="card-title">🐶 ${escapeHtml(dog.name)}</div>
+    <div class="field"><label>Nombre del perro</label><input id="pfDogName_${i}" value="${escapeHtml(dog.name)}"></div>
+    <div class="field"><label>Raza</label><input id="pfDogBreed_${i}" value="${escapeHtml(dog.breed)}"></div>
+    <div class="field"><label>Edad del perro</label><input id="pfDogAge_${i}" value="${escapeHtml(dog.age)}"></div>
+    <div class="field"><label>Notas del perro</label><textarea id="pfDogNotes_${i}">${escapeHtml(dog.notes)}</textarea></div>
+    <hr class="sep">
+    <div class="card-title" style="font-size:13px;">Evaluación de conducta</div>
+    <div class="card-sub">Cuestionario de 48 preguntas (muestra reducida). Una única vez por perro, salvo que tu adiestrador la habilite de nuevo.</div>
+    <button class="btn ${canEval?'btn-outline':''}" ${canEval?'':'disabled'} onclick="attemptEvaluacion('${dog.id}')">${evalBtnLabel}</button>
+    <div class="eval-hist" style="margin-top:8px;">${hist}</div>
+  </div>`;
+}
+function attemptEvaluacion(dogId){
   const c = activeClient();
-  if(!canDoEvaluation(c)){
-    alert('Ya completaste tu evaluación inicial. Si tu adiestrador necesita que la repitas, puede habilitarla de nuevo desde el panel de administrador.');
+  const dog = c.dogs.find(d=>d.id===dogId);
+  if(!canDoEvaluation(dog)){
+    alert('Ya se completó la evaluación inicial de este perro. Si tu adiestrador necesita que la repitas, puede habilitarla de nuevo desde el panel de administrador.');
     return;
   }
-  nav('screenEvaluacion');
+  nav('screenEvaluacion', {dogId});
 }
 function saveProfile(){
   const c = activeClient();
   c.name = document.getElementById('pfName').value || c.name;
   c.phone = document.getElementById('pfPhone').value;
   c.address = document.getElementById('pfAddress').value;
-  c.dogName = document.getElementById('pfDogName').value || c.dogName;
-  c.dogBreed = document.getElementById('pfDogBreed').value;
-  c.dogAge = document.getElementById('pfDogAge').value;
-  c.dogNotes = document.getElementById('pfDogNotes').value;
+  c.dogs.forEach((dog,i)=>{
+    dog.name = document.getElementById(`pfDogName_${i}`).value || dog.name;
+    dog.breed = document.getElementById(`pfDogBreed_${i}`).value;
+    dog.age = document.getElementById(`pfDogAge_${i}`).value;
+    dog.notes = document.getElementById(`pfDogNotes_${i}`).value;
+  });
   saveState();
   alert('Datos guardados.');
-  renderHome();
+  renderPerfil();
 }
 function unsubscribe(){
   if(!confirm('¿Seguro que quieres darte de baja?')) return;
@@ -1199,8 +1355,34 @@ function unsubscribe(){
   renderPerfil();
 }
 
+/* ---------------- AÑADIR PERRO ---------------- */
+function renderAddDog(){
+  document.getElementById('addDogName').value='';
+  document.getElementById('addDogBreed').value='';
+  document.getElementById('addDogAge').value='';
+}
+function submitAddDog(){
+  const c = activeClient();
+  if(c.dogs.length>=MAX_DOGS){ alert(`Ya tienes el máximo de ${MAX_DOGS} perros permitido por tu suscripción.`); return; }
+  const name = document.getElementById('addDogName').value.trim();
+  if(!name){ alert('Escribe el nombre del perro.'); return; }
+  const dog = makeDog({
+    name,
+    breed: document.getElementById('addDogBreed').value,
+    age: document.getElementById('addDogAge').value,
+  });
+  c.dogs.push(dog);
+  c.selectedDogId = dog.id;
+  saveState();
+  alert('¡Perro añadido! Ya puedes empezar su curso básico.');
+  nav('screenPerfil');
+}
+
 /* ---------------- EVALUACION ---------------- */
 function renderEvaluacion(){
+  const c = activeClient();
+  const dog = c.dogs.find(d=>d.id===navCtx.dogId);
+  document.getElementById('evaluacionDogLabel').textContent = dog ? 'Evaluación — '+dog.name : 'Evaluación';
   document.getElementById('evalForm').innerHTML = EVAL_QUESTIONS.map((q,i)=>`
     <div class="eval-q">
       <p>${i+1}. ${escapeHtml(q)}</p>
@@ -1209,8 +1391,9 @@ function renderEvaluacion(){
 }
 function submitEvaluation(){
   const c = activeClient();
-  c.evaluations.push({date:S.meta.simDate});
-  c.evalReenabled = false;
+  const dog = c.dogs.find(d=>d.id===navCtx.dogId);
+  dog.evaluations.push({date:S.meta.simDate});
+  dog.evalReenabled = false;
   saveState();
   alert('Evaluación enviada. Gracias.');
   nav('screenPerfil');
@@ -1225,9 +1408,13 @@ function submitOnboarding(){
   c.name = name;
   c.phone = document.getElementById('obPhone').value;
   c.address = document.getElementById('obAddress').value;
-  c.dogName = dogName;
-  c.dogBreed = document.getElementById('obDogBreed').value;
-  c.dogAge = document.getElementById('obDogAge').value;
+  const dog = makeDog({
+    name: dogName,
+    breed: document.getElementById('obDogBreed').value,
+    age: document.getElementById('obDogAge').value,
+  });
+  c.dogs = [dog];
+  c.selectedDogId = dog.id;
   c.onboarded = true;
   c.lastEntryDate = S.meta.simDate;
   saveState();
@@ -1333,8 +1520,9 @@ function renderAdminStats(){
 function renderAdminClients(){
   document.getElementById('adminClientList').innerHTML = S.clients.map(c=>{
     const map = {active:'Activa', pending:'Pendiente', grace:'2 días gracia', cancelled:'Baja'};
+    const dogNames = c.dogs.map(d=>d.name).join(', ');
     return `<div class="client-card" onclick="openClientModal('${c.id}')">
-      <div><div class="nm">${escapeHtml(c.name)} · 🐶 ${escapeHtml(c.dogName)}</div>
+      <div><div class="nm">${escapeHtml(c.name)} · 🐶 ${escapeHtml(dogNames)}</div>
       <div class="meta">XP mensual: ${c.xpMonthly} · Hucha: ${c.xpBank} · ${map[c.subscriptionStatus]}</div></div>
       <div>➜</div>
     </div>`;
@@ -1342,34 +1530,46 @@ function renderAdminClients(){
 }
 function openClientModal(id){
   const c = S.clients.find(x=>x.id===id);
-  const courseTxt = c.courses.basico.completed
-    ? (c.courses.avanzado.completed ? 'Avanzado completado' : `Avanzado — sesión ${c.courses.avanzado.currentSession}/${c.courses.avanzado.totalSessions}`)
-    : `Básico — sesión ${c.courses.basico.currentSession}/${c.courses.basico.totalSessions}`;
-  const trainingHist = c.bookingsTraining.map(b=>`${humanDate(b.date)} ${b.hour} — ${b.service} (${b.paidAmount.toFixed(2)}€)`).join('<br>') || 'Sin reservas';
-  const residHist = c.bookingsResidencia.map(b=>`${humanDate(b.checkin)} → ${humanDate(b.checkout)} (${b.paidAmount.toFixed(2)}€)`).join('<br>') || 'Sin reservas';
+  const dogsHtml = c.dogs.map(dog=>{
+    const courseTxt = dog.courses.basico.completed
+      ? (dog.courses.avanzado.completed ? 'Avanzado completado' : `Avanzado — sesión ${dog.courses.avanzado.currentSession}/${dog.courses.avanzado.totalSessions}`)
+      : `Básico — sesión ${dog.courses.basico.currentSession}/${dog.courses.basico.totalSessions}`;
+    return `<div class="kv"><span>🐶 ${escapeHtml(dog.name)}</span><span>${courseTxt}</span></div>
+      <div class="kv"><span>Última sesión</span><span>${dog.lastTrainingSessionDate ? humanDate(dog.lastTrainingSessionDate) : '—'}</span></div>
+      <div class="kv"><span>Evaluaciones</span><span>${dog.evaluations.length} ${dog.evalReenabled?'(nueva habilitada)':''}</span></div>
+      <button class="btn btn-sm" style="margin:4px 0 10px;" ${(dog.evaluations.length===0||dog.evalReenabled)?'disabled':''} onclick="adminReenableEvaluation('${c.id}','${dog.id}')">Habilitar nueva evaluación — ${escapeHtml(dog.name)}</button>`;
+  }).join('<hr class="sep">');
+  const trainingHist = c.bookingsTraining.map(b=>{
+    const dn = c.dogs.find(d=>d.id===b.dogId);
+    return `${humanDate(b.date)} ${b.hour} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''} (${b.paidAmount.toFixed(2)}€)`;
+  }).join('<br>') || 'Sin reservas';
+  const residHist = c.bookingsResidencia.map(b=>{
+    const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
+    return `${humanDate(b.checkin)} → ${humanDate(b.checkout)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€)`;
+  }).join('<br>') || 'Sin reservas';
   document.getElementById('clientModalBody').innerHTML = `
-    <h3>${escapeHtml(c.name)} · 🐶 ${escapeHtml(c.dogName)}</h3>
+    <h3>${escapeHtml(c.name)}</h3>
     <div class="kv"><span>Teléfono</span><span>${escapeHtml(c.phone)}</span></div>
     <div class="kv"><span>Dirección</span><span>${escapeHtml(c.address)}</span></div>
-    <div class="kv"><span>XP mensual</span><span>${c.xpMonthly}</span></div>
-    <div class="kv"><span>Hucha de XP</span><span>${c.xpBank}</span></div>
-    <div class="kv"><span>Curso actual</span><span>${courseTxt}</span></div>
-    <div class="kv"><span>Última sesión</span><span>${c.lastTrainingSessionDate ? humanDate(c.lastTrainingSessionDate) : '—'}</span></div>
+    <div class="kv"><span>XP mensual (cuenta)</span><span>${c.xpMonthly}</span></div>
+    <div class="kv"><span>Hucha de XP (cuenta)</span><span>${c.xpBank}</span></div>
     <div class="kv"><span>Estado de pago</span><span>${c.subscriptionStatus}</span></div>
-    <div class="kv"><span>Evaluaciones</span><span>${c.evaluations.length} ${c.evalReenabled?'(nueva evaluación habilitada)':''}</span></div>
-    <h3 style="margin-top:14px;font-size:13px;">Historial de adiestramiento</h3>
+    <hr class="sep">
+    ${dogsHtml}
+    <hr class="sep">
+    <h3 style="font-size:13px;">Historial de adiestramiento</h3>
     <p style="font-size:12px;">${trainingHist}</p>
     <h3 style="font-size:13px;">Historial de residencia</h3>
     <p style="font-size:12px;">${residHist}</p>
-    <button class="btn btn-sm" style="margin-top:10px;" ${(c.evaluations.length===0||c.evalReenabled)?'disabled':''} onclick="adminReenableEvaluation('${c.id}')">Habilitar nueva evaluación para este cliente</button>
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
 }
-function adminReenableEvaluation(id){
-  const c = S.clients.find(x=>x.id===id);
-  c.evalReenabled = true;
+function adminReenableEvaluation(clientId, dogId){
+  const c = S.clients.find(x=>x.id===clientId);
+  const dog = c.dogs.find(d=>d.id===dogId);
+  dog.evalReenabled = true;
   saveState();
-  openClientModal(id);
+  openClientModal(clientId);
 }
 function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
 
@@ -1429,6 +1629,7 @@ const RENDERERS = {
   screenExtra: renderExtra,
   screenLectura: renderLectura,
   screenPerfil: renderPerfil,
+  screenAddDog: renderAddDog,
   screenEvaluacion: renderEvaluacion,
 };
 
