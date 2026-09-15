@@ -1,0 +1,1407 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BalanceDog — Prototipo funcional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5EFE6;
+  --card:#FFFCF6;
+  --accent:#B08968;
+  --accent-dark:#8B6A4F;
+  --accent-light:#EADFC8;
+  --text:#4A3B2E;
+  --text-soft:#93826D;
+  --danger:#C1666B;
+  --success:#7A9E7E;
+  --warn:#D9A441;
+  --radius:20px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Quicksand','Trebuchet MS',sans-serif;
+  background:#241f19;
+  color:var(--text);
+  padding-block:24px;
+}
+button, input, select, textarea{font-family:inherit;}
+h1,h2,h3,h4,p{margin:0;}
+.hidden{display:none !important;}
+img{max-width:100%;}
+
+/* ---------- layout shells ---------- */
+.app-wrap{
+  display:flex;
+  flex-wrap:wrap;
+  gap:24px;
+  justify-content:center;
+  align-items:flex-start;
+  padding-inline:16px;
+}
+.phone{
+  width:390px;
+  max-width:100%;
+  background:var(--bg);
+  border-radius:38px;
+  box-shadow:0 0 0 9px #14110d, 0 24px 50px rgba(0,0,0,.5);
+  overflow:hidden;
+  position:relative;
+}
+.phone-screen{
+  height:844px;
+  max-height:80vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  position:relative;
+}
+.screen{display:none;}
+.screen.active{display:block;}
+.screen-pad{padding:18px 18px 90px;}
+
+/* ---------- debug bar ---------- */
+#debugBar{
+  width:390px;
+  max-width:100%;
+  margin:0 auto 14px;
+  background:#171310;
+  color:#f1e6d6;
+  border-radius:16px;
+  padding:10px 14px;
+  font-size:12.5px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+#debugBar b{color:var(--warn);}
+#debugBar button{
+  background:#3a3128;
+  color:#f1e6d6;
+  border:1px solid #55483a;
+  border-radius:10px;
+  padding:5px 9px;
+  cursor:pointer;
+  font-size:12px;
+}
+#debugBar button:hover{background:#4a3f33;}
+#debugBar input[type=date]{
+  background:#3a3128;color:#f1e6d6;border:1px solid #55483a;border-radius:8px;padding:4px 6px;font-size:12px;
+}
+#debugBar .spacer{flex:1 1 auto;}
+#debugBar .grp{display:flex;gap:4px;align-items:center;}
+
+/* ---------- topbar / header ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 18px 6px;
+}
+.greet{font-size:19px;font-weight:700;color:var(--text);}
+.bell-btn{
+  position:relative;width:40px;height:40px;border-radius:50%;
+  background:var(--card);border:none;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+.bell-badge{
+  position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;
+  font-size:10px;border-radius:10px;min-width:16px;height:16px;display:flex;
+  align-items:center;justify-content:center;padding:0 4px;font-weight:700;
+}
+.back-btn{
+  background:var(--card);border:none;border-radius:12px;padding:8px 12px;font-size:14px;cursor:pointer;
+  font-weight:700;color:var(--accent-dark);box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.header-row{display:flex;align-items:center;gap:10px;padding:18px 18px 4px;}
+.header-row h2{font-size:17px;}
+
+/* ---------- mascot ---------- */
+.mascot-wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6px 0 10px;position:relative;
+}
+.mascot-stage{position:relative;width:150px;height:120px;display:flex;align-items:flex-end;justify-content:center;}
+.mascot-anim{
+  font-size:78px;line-height:1;transform-origin:bottom center;
+  animation:squash 2.6s ease-in-out infinite;
+  filter:drop-shadow(0 8px 6px rgba(0,0,0,.15));
+}
+@keyframes squash{
+  0%{transform:scaleY(1) scaleX(1);}
+  30%{transform:scaleY(.86) scaleX(1.08);}
+  55%{transform:scaleY(1.08) scaleX(.95);}
+  80%{transform:scaleY(.97) scaleX(1.02);}
+  100%{transform:scaleY(1) scaleX(1);}
+}
+.mascot-badge{
+  position:absolute;top:-6px;right:6px;font-size:26px;
+  animation:float 2.2s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.mascot-label{font-weight:700;color:var(--accent-dark);font-size:13.5px;margin-top:2px;letter-spacing:.2px;}
+/* SPRITE-NOTE: sustituir .mascot-anim (emoji) y .mascot-badge (emoji) por los sprites/gif definitivos del Tamagotchi */
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--card);border-radius:var(--radius);padding:16px;
+  box-shadow:0 3px 10px rgba(80,60,40,.08);margin-bottom:14px;
+}
+.card-accent{
+  background:linear-gradient(135deg,var(--accent-light),var(--card));
+  border:1px solid #e3d3b6;
+}
+.card-title{font-weight:800;font-size:15.5px;margin-bottom:4px;}
+.card-sub{font-size:12.5px;color:var(--text-soft);margin-bottom:8px;}
+.card-cta{font-size:12px;font-weight:700;color:var(--accent-dark);}
+.xp-value{font-size:26px;font-weight:800;color:var(--accent-dark);}
+.card-icon-row{display:flex;align-items:center;justify-content:space-between;}
+.card-icon{font-size:30px;}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:block;width:100%;border:none;border-radius:14px;padding:12px 14px;
+  font-weight:700;font-size:14px;cursor:pointer;text-align:center;text-decoration:none;color:#fff;
+  background:var(--accent);
+}
+.btn:hover{background:var(--accent-dark);}
+.btn-outline{background:transparent;border:2px solid var(--accent);color:var(--accent-dark);}
+.btn-danger{background:var(--danger);}
+.btn-sm{padding:8px 10px;font-size:12.5px;border-radius:10px;}
+.btn-block-group{display:flex;flex-direction:column;gap:10px;}
+
+.row3{display:flex;gap:10px;margin:6px 0 14px;}
+.row3 .tile{flex:1;}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px;}
+.tile{
+  background:var(--card);border-radius:16px;padding:10px 8px;text-align:center;cursor:pointer;
+  box-shadow:0 3px 8px rgba(80,60,40,.07);border:none;font-family:inherit;
+}
+.tile:disabled,.tile.locked{opacity:.68;cursor:not-allowed;}
+.tile .ic{font-size:22px;display:block;margin-bottom:4px;}
+.tile .t{font-size:11px;font-weight:700;color:var(--text);}
+.tile .lock{font-size:16px;}
+.course-tile{
+  background:var(--card);border-radius:16px;padding:12px 10px;text-align:left;cursor:pointer;border:none;font-family:inherit;
+  box-shadow:0 3px 8px rgba(80,60,40,.07);
+}
+.course-tile.locked{opacity:.65;cursor:not-allowed;text-align:center;}
+.course-tile .name{font-weight:800;font-size:12.5px;color:var(--accent-dark);margin-bottom:2px;}
+.course-tile .info{font-size:11px;color:var(--text-soft);line-height:1.3;}
+.course-tile .lock-ic{font-size:20px;display:block;margin-bottom:4px;text-align:center;}
+
+/* ---------- misc components ---------- */
+.placeholder-img{
+  background:var(--accent-light);border:2px dashed #cdb794;border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:22px 10px;color:var(--accent-dark);font-size:12px;font-weight:600;gap:6px;margin-bottom:10px;
+}
+.placeholder-img .em{font-size:34px;}
+.face-row{display:flex;gap:8px;justify-content:space-between;margin-top:14px;}
+.face-btn{
+  flex:1;background:var(--card);border:2px solid var(--accent-light);border-radius:14px;
+  padding:10px 4px;text-align:center;cursor:pointer;font-size:24px;
+}
+.face-btn small{display:block;font-size:9.5px;font-weight:700;color:var(--text-soft);margin-top:4px;}
+.face-btn:hover{border-color:var(--accent);}
+.notif-item{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+.notif-item.unread{border-left:4px solid var(--accent);}
+.notif-title{font-weight:800;font-size:13.5px;}
+.notif-date{font-size:10.5px;color:var(--text-soft);margin-bottom:4px;}
+.notif-body{font-size:12.5px;color:var(--text);}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--text-soft);margin-bottom:4px;}
+.field input,.field select,.field textarea{
+  width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--accent-light);
+  background:#fff;font-size:14px;color:var(--text);
+}
+.field textarea{resize:vertical;min-height:60px;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;}
+.badge-active{background:var(--success);}
+.badge-pending{background:var(--warn);}
+.badge-grace{background:#D98E41;}
+.badge-cancelled{background:var(--danger);}
+.svc-item{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+.svc-item .p{font-weight:800;color:var(--accent-dark);}
+.daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:10px 0;}
+.daycell{
+  background:#fff;border:1.5px solid var(--accent-light);border-radius:10px;padding:6px 2px;text-align:center;
+  font-size:11px;cursor:pointer;font-weight:700;
+}
+.daycell.closed{background:#f1e3e3;color:#b98;text-decoration:line-through;cursor:not-allowed;opacity:.6;}
+.daycell.past{opacity:.35;cursor:not-allowed;}
+.daycell.selected{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
+.daycell .dow{display:block;font-size:9px;color:var(--text-soft);font-weight:600;}
+.daycell.selected .dow{color:#fce;}
+.hour-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+.hour-chip{
+  padding:7px 10px;border-radius:20px;border:1.5px solid var(--accent-light);background:#fff;
+  font-size:12px;font-weight:700;cursor:pointer;
+}
+.hour-chip.closed{background:#f1e3e3;color:#b98;text-decoration:line-through;cursor:not-allowed;}
+.hour-chip.selected{background:var(--accent);color:#fff;}
+.pricebox{background:var(--accent-light);border-radius:14px;padding:12px;margin:10px 0;font-size:13px;}
+.pricebox .line{display:flex;justify-content:space-between;margin-bottom:3px;}
+.pricebox .tot{font-weight:800;font-size:15px;border-top:1px dashed #c8b394;padding-top:6px;margin-top:6px;}
+.accordion-item{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+.accordion-head{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.accordion-head .em{font-size:22px;}
+.accordion-head .t{font-weight:800;font-size:13.5px;flex:1;}
+.accordion-body{display:none;margin-top:10px;font-size:12.5px;color:var(--text-soft);}
+.accordion-item.open .accordion-body{display:block;}
+.behavior-item{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);cursor:pointer;border:2px solid transparent;}
+.behavior-item.disabled{opacity:.55;cursor:not-allowed;}
+.behavior-item.active-item{border-color:var(--accent);}
+.behavior-item .name{font-weight:800;font-size:14px;}
+.behavior-item .st{font-size:12px;color:var(--text-soft);margin-top:2px;}
+.note-box{background:#FBF3E3;border:1px solid #EBD9AF;border-radius:12px;padding:10px 12px;font-size:12px;color:#7a6640;margin-bottom:12px;}
+.eval-q{margin-bottom:14px;}
+.eval-q p{font-weight:700;font-size:13px;margin-bottom:6px;}
+.eval-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.eval-opts label{
+  background:#fff;border:1.5px solid var(--accent-light);border-radius:20px;padding:6px 10px;font-size:11.5px;cursor:pointer;
+}
+.eval-opts input{margin-right:4px;}
+.eval-hist{font-size:12px;color:var(--text-soft);}
+hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
+.extra-note{font-size:10.5px;color:var(--text-soft);font-style:italic;margin-top:6px;}
+
+/* ---------- admin ---------- */
+#adminApp{width:900px;max-width:96vw;background:#fffdf9;border-radius:20px;padding:22px 26px 40px;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+#adminApp h1{font-size:20px;margin-bottom:2px;}
+#adminApp .sub{color:var(--text-soft);font-size:12.5px;margin-bottom:18px;}
+.admin-section{background:var(--card);border-radius:16px;padding:16px 18px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.admin-section h3{font-size:15px;margin-bottom:10px;color:var(--accent-dark);}
+.admin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.stat-row{display:flex;gap:14px;flex-wrap:wrap;}
+.stat-box{flex:1;min-width:150px;background:var(--accent-light);border-radius:14px;padding:14px;text-align:center;}
+.stat-box .n{font-size:22px;font-weight:800;color:var(--accent-dark);}
+.stat-box .l{font-size:11.5px;color:var(--text-soft);}
+.admin-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto;}
+.admin-daycell{background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
+.admin-daycell.closed{background:#f1e3e3;color:#a95;}
+.admin-daycell small{display:block;font-size:8px;font-weight:600;color:var(--text-soft);}
+.ad-daytoggle{cursor:pointer;padding:2px 0 4px;border-radius:5px;}
+.ad-daytoggle:hover{background:var(--accent-light);}
+.admin-hours{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;justify-content:center;}
+.admin-hour{font-size:7.5px;background:#eee;border-radius:4px;padding:1px 3px;cursor:pointer;}
+.admin-hour.closed{background:#e6b9b9;text-decoration:line-through;}
+.client-card{background:#fff;border:1.5px solid var(--accent-light);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.client-card:hover{border-color:var(--accent);}
+.client-card .nm{font-weight:800;font-size:14px;}
+.client-card .meta{font-size:11.5px;color:var(--text-soft);}
+.modal-overlay{position:fixed;inset:0;background:rgba(20,15,10,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal-box{background:#fff;border-radius:18px;padding:22px;max-width:480px;width:100%;max-height:86vh;overflow-y:auto;}
+.modal-box h3{margin-bottom:10px;}
+.kv{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0e8da;}
+.tabs{display:flex;gap:8px;margin-bottom:12px;}
+.tab-btn{background:var(--accent-light);border:none;border-radius:10px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--accent-dark);}
+.tab-btn.active{background:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+
+<div id="debugBar">
+  <div class="grp"><b>MODO DEBUG</b></div>
+  <div class="grp">Fecha simulada: <b id="dbgDateLabel">—</b></div>
+  <div class="grp">
+    <button onclick="debugShiftDay(-1)">-1 día</button>
+    <button onclick="debugShiftDay(1)">+1 día</button>
+    <button onclick="debugShiftDay(7)">+7 días</button>
+    <button onclick="debugGotoNextMonth()">Día 1 mes siguiente</button>
+    <input type="date" id="dbgDateInput" onchange="debugSetDate(this.value)">
+  </div>
+  <div class="spacer"></div>
+  <div class="grp">
+    <button onclick="toggleView()">Cambiar vista cliente/admin</button>
+    <button onclick="debugShowOnboarding()">Ver onboarding</button>
+    <button onclick="debugResetState()">Reiniciar datos</button>
+  </div>
+</div>
+
+<div class="app-wrap">
+  <div class="phone" id="clientAppWrap">
+    <div class="phone-screen" id="phoneScreen">
+
+      <!-- ============ ONBOARDING ============ -->
+      <div class="screen" id="screenOnboarding">
+        <div class="screen-pad">
+          <div class="header-row"><h2>🐾 Bienvenido a BalanceDog</h2></div>
+          <div class="card">
+            <p class="card-sub">Antes de empezar, cuéntanos un poco sobre ti y tu perro.</p>
+            <div class="field"><label>Nombre y apellidos</label><input id="obName" placeholder="Ej. Laura Gómez"></div>
+            <div class="field"><label>Teléfono</label><input id="obPhone" placeholder="Ej. 600 111 222"></div>
+            <div class="field"><label>Dirección</label><input id="obAddress" placeholder="Calle, número, ciudad"></div>
+            <div class="field"><label>Nombre del perro</label><input id="obDogName" placeholder="Ej. Toby"></div>
+            <div class="field"><label>Raza</label><input id="obDogBreed" placeholder="Ej. Border Collie"></div>
+            <div class="field"><label>Edad del perro</label><input id="obDogAge" placeholder="Ej. 3 años"></div>
+            <div class="note-box">📋 Te recomendamos completar la <b>evaluación inicial</b> (48 preguntas) desde tu perfil en cuanto termines el registro, para que podamos personalizar tu plan.</div>
+            <button class="btn" onclick="submitOnboarding()">Comenzar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ HOME ============ -->
+      <div class="screen" id="screenHome">
+        <div class="topbar">
+          <div class="greet" id="homeGreeting">Hola, ...</div>
+          <button class="bell-btn" onclick="nav('screenNotifications')">🔔<span class="bell-badge hidden" id="bellBadge">0</span></button>
+        </div>
+
+        <div class="mascot-wrap">
+          <!-- SPRITE-NOTE: aquí irían los sprites/gif reales del Tamagotchi, sustituyendo a los emojis -->
+          <div class="mascot-stage">
+            <div class="mascot-anim" id="mascotEmoji">🐶</div>
+            <div class="mascot-badge" id="mascotBadge">💖</div>
+          </div>
+          <div class="mascot-label" id="mascotLabel">Contento</div>
+        </div>
+
+        <div class="screen-pad" style="padding-top:0;">
+          <div class="card card-accent" onclick="openXpExchange()" style="cursor:pointer;">
+            <div class="card-icon-row">
+              <div>
+                <div class="card-title">⭐ XP Mensual</div>
+                <div class="xp-value" id="xpMonthlyVal">0 XP</div>
+              </div>
+              <div class="card-icon">🏆</div>
+            </div>
+            <div class="card-sub" style="margin-top:6px;">¡Gran progreso! <span class="card-cta">Toca para intercambiar tu XP →</span></div>
+          </div>
+
+          <div class="card" onclick="openResidenceFromBank()" style="cursor:pointer;">
+            <div class="card-icon-row">
+              <div>
+                <div class="card-title">🏠 Hucha de XP Total</div>
+                <div class="xp-value" id="xpBankVal">0 XP</div>
+              </div>
+              <div class="card-icon">🐕‍🦺</div>
+            </div>
+            <div class="card-sub" style="margin-top:6px;">Intercambia tu XP por alojamiento <span class="card-cta">→</span></div>
+          </div>
+
+          <div class="row3" id="courseRow"></div>
+
+          <div class="row4">
+            <button class="tile" onclick="nav('screenLectura')"><span class="ic">📖</span><span class="t">Lectura</span></button>
+            <button class="tile" onclick="nav('screenExtra')"><span class="ic">✨</span><span class="t">Contenido extra</span></button>
+            <button class="tile" onclick="nav('screenPerfil')"><span class="ic">👤</span><span class="t">Mi perfil</span></button>
+            <a class="tile" style="text-decoration:none;display:block;" href="https://wa.me/34600111222?text=Hola%20BalanceDog!" target="_blank" rel="noopener"><span class="ic">✉️</span><span class="t">WhatsApp</span></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ NOTIFICATIONS ============ -->
+      <div class="screen" id="screenNotifications">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Notificaciones</h2></div>
+        <div class="screen-pad" id="notifList"></div>
+      </div>
+
+      <!-- ============ XP SERVICES ============ -->
+      <div class="screen" id="screenXpServices">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Canjear XP mensual</h2></div>
+        <div class="screen-pad">
+          <div class="pricebox">Tienes <b id="xpServicesAvail">0 XP</b> disponibles este mes (equivalen a <b id="xpServicesEur">0€</b> de descuento).</div>
+          <div id="svcList"></div>
+        </div>
+      </div>
+
+      <!-- ============ XP TRAINING BOOKING ============ -->
+      <div class="screen" id="screenXpBooking">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenXpServices')">← Volver</button><h2 id="bookingSvcTitle">Reservar</h2></div>
+        <div class="screen-pad">
+          <p class="card-sub">Elige un día y una hora disponibles.</p>
+          <div class="daygrid" id="trainingDayGrid"></div>
+          <div class="hour-row" id="trainingHourRow"></div>
+          <div class="pricebox" id="trainingPricebox"></div>
+          <button class="btn" id="trainingPayBtn" onclick="payTrainingBooking()" disabled>Reservar y pagar (simulado)</button>
+        </div>
+      </div>
+
+      <!-- ============ RESIDENCE BOOKING ============ -->
+      <div class="screen" id="screenResidence">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Reservar residencia</h2></div>
+        <div class="screen-pad">
+          <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche · aforo simulado por el admin.</div>
+          <div class="field"><label>Entrada</label><input type="date" id="residCheckin"></div>
+          <div class="field"><label>Salida</label><input type="date" id="residCheckout"></div>
+          <button class="btn btn-outline" onclick="checkResidenceAvailability()">Comprobar disponibilidad</button>
+          <div id="residResult" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- ============ COURSE SESSION ============ -->
+      <div class="screen" id="screenSession">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2 id="sessionCourseLabel">Sesión</h2></div>
+        <div class="screen-pad">
+          <div class="card">
+            <div class="card-title" id="sessionTitle">Nombre del ejercicio</div>
+            <div class="card-sub" id="sessionDesc">Descripción</div>
+          </div>
+          <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo 1 — aquí iría la foto/gif real del ejercicio</div>
+          <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo 2 — aquí iría la foto/gif real del ejercicio</div>
+          <div id="sessionInteraction"></div>
+        </div>
+      </div>
+
+      <!-- ============ ALREADY DONE TODAY ============ -->
+      <div class="screen" id="screenBlocked">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Sesión no disponible</h2></div>
+        <div class="screen-pad">
+          <div class="card"><div class="card-title">⏳ Ya has completado tu sesión de hoy</div>
+          <div class="card-sub">Solo se puede realizar una sesión de adiestramiento/conducta al día. La siguiente sesión estará disponible mañana (00:00).</div></div>
+          <button class="btn" onclick="goHome()">Volver a inicio</button>
+        </div>
+      </div>
+
+      <!-- ============ CONDUCTA LIST ============ -->
+      <div class="screen" id="screenConducta">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Conducta</h2></div>
+        <div class="screen-pad" id="conductaList"></div>
+      </div>
+
+      <!-- ============ CONTENIDO EXTRA ============ -->
+      <div class="screen" id="screenExtra">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Contenido extra</h2></div>
+        <div class="screen-pad">
+          <p class="extra-note">Contenido libre, sin bloqueos ni límite diario. Nunca otorga XP.</p>
+          <div id="extraList"></div>
+        </div>
+      </div>
+
+      <!-- ============ LECTURA ============ -->
+      <div class="screen" id="screenLectura">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Lectura mensual</h2></div>
+        <div class="screen-pad" id="lecturaBody"></div>
+      </div>
+
+      <!-- ============ PERFIL ============ -->
+      <div class="screen" id="screenPerfil">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Mi perfil</h2></div>
+        <div class="screen-pad">
+          <div class="card">
+            <div class="card-icon-row"><div class="card-title">Estado de suscripción</div><span class="badge" id="subBadge">—</span></div>
+            <button class="btn btn-danger btn-sm" style="margin-top:10px;" onclick="unsubscribe()">Darme de baja</button>
+          </div>
+          <div class="card">
+            <div class="field"><label>Nombre y apellidos</label><input id="pfName"></div>
+            <div class="field"><label>Teléfono</label><input id="pfPhone"></div>
+            <div class="field"><label>Dirección</label><input id="pfAddress"></div>
+            <div class="field"><label>Nombre del perro</label><input id="pfDogName"></div>
+            <div class="field"><label>Raza</label><input id="pfDogBreed"></div>
+            <div class="field"><label>Edad del perro</label><input id="pfDogAge"></div>
+            <div class="field"><label>Notas del perro</label><textarea id="pfDogNotes"></textarea></div>
+            <button class="btn" onclick="saveProfile()">Guardar cambios</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Evaluación de conducta</div>
+            <div class="card-sub">Cuestionario de 48 preguntas (muestra reducida en este prototipo).</div>
+            <button class="btn btn-outline" onclick="nav('screenEvaluacion')">Realizar evaluación</button>
+            <hr class="sep">
+            <div class="eval-hist" id="evalHistory"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ EVALUACION ============ -->
+      <div class="screen" id="screenEvaluacion">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenPerfil')">← Volver</button><h2>Evaluación</h2></div>
+        <div class="screen-pad">
+          <p class="card-sub">Responde según el comportamiento habitual de tu perro. (Muestra de 8 de las 48 preguntas reales)</p>
+          <div id="evalForm"></div>
+          <button class="btn" onclick="submitEvaluation()">Enviar evaluación</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ ADMIN ============ -->
+  <div id="adminApp" class="hidden">
+    <h1>🐾 BalanceDog — Panel de administrador</h1>
+    <div class="sub">Fecha simulada actual: <b id="adminDateLabel">—</b> · <button class="tab-btn" onclick="toggleView()">Volver a vista cliente</button></div>
+
+    <div class="admin-section">
+      <h3>📖 Lectura mensual</h3>
+      <p class="card-sub" id="adminReadingInfo">—</p>
+      <input type="file" id="adminReadingFile" accept="image/*,application/pdf">
+      <button class="tab-btn" onclick="adminUploadReading()">Subir lectura</button>
+    </div>
+
+    <div class="admin-section">
+      <h3>🗓️ Calendarios</h3>
+      <div class="tabs">
+        <button class="tab-btn active" id="tabTraining" onclick="adminSwitchCalTab('training')">Adiestramiento</button>
+        <button class="tab-btn" id="tabResidencia" onclick="adminSwitchCalTab('residencia')">Residencia</button>
+      </div>
+      <p class="card-sub">Haz clic en un día para abrir/cerrar la jornada completa. En adiestramiento puedes además abrir/cerrar franjas horarias sueltas.</p>
+      <div class="admin-daygrid" id="adminCalGrid"></div>
+      <div class="field" style="max-width:220px;margin-top:6px;" id="capacityField">
+        <label>Aforo máximo diario residencia</label>
+        <input type="number" id="adminCapacity" min="0" onchange="adminSetCapacity(this.value)">
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h3>📊 Estadísticas</h3>
+      <div class="stat-row">
+        <div class="stat-box"><div class="n" id="statRevenue">0€</div><div class="l">Ingresos del mes (simulado)</div></div>
+        <div class="stat-box"><div class="n" id="statActive">0</div><div class="l">Clientes activos</div></div>
+        <div class="stat-box"><div class="n" id="statCancelled">0</div><div class="l">Clientes de baja</div></div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h3>👥 Clientes</h3>
+      <div id="adminClientList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="clientModal">
+  <div class="modal-box" id="clientModalBody"></div>
+</div>
+
+<script>
+/* =========================================================================
+   BALANCEDOG — PROTOTIPO FUNCIONAL (HTML/CSS/JS, sin backend, localStorage)
+   ========================================================================= */
+
+const STORAGE_KEY = 'balancedog_state_v1';
+const XP_TO_EUR = 0.05; // 20 XP = 1€, tasa usada tanto para XP mensual como para la hucha
+const FIXED_HOURS = ['09:00','11:00','13:00','17:00','19:00'];
+
+const SERVICES = [
+  {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30},
+  {id:'bono2', name:'Bono 2 sesiones', info:'2 sesiones de adiestramiento', price:50},
+  {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento', price:80},
+  {id:'diyg', name:'DIY grupal', info:'Mensual, clases en grupo', price:100},
+  {id:'diyi', name:'DIY individual', info:'Mensual, clases individuales', price:150},
+];
+
+const BASICO_SESSIONS = [
+  {name:'Toma de contacto y clicker', kind:'simple', desc:'Primer contacto con el clicker: asociar el sonido con la recompensa.'},
+  {name:'Sentado básico', kind:'obediencia', desc:'Enseñar la orden "sentado" con refuerzo positivo.'},
+  {name:'Tumbado básico', kind:'obediencia', desc:'Progresar de sentado a tumbado de forma guiada.'},
+  {name:'Mirada y atención', kind:'simple', desc:'Trabajar el contacto visual y la atención al guía.'},
+  {name:'Sesión de juego y vínculo', kind:'juego', desc:'Día de juego libre para reforzar el vínculo, sin evaluación de aciertos.'},
+  {name:'Quieto', kind:'obediencia', desc:'Mantener la posición ante distracciones leves.'},
+  {name:'Llamada / Ven', kind:'obediencia', desc:'Refuerzo de la llamada en espacios controlados.'},
+  {name:'Caminar sin tirar', kind:'obediencia', desc:'Paseo con correa floja en tramos cortos.'},
+  {name:'Sesión de juego', kind:'juego', desc:'Día de juego para consolidar lo aprendido, solo confirmación.'},
+  {name:'Repaso general básico', kind:'obediencia', desc:'Repaso de todos los ejercicios del curso básico.'},
+];
+const AVANZADO_SESSIONS = [
+  {name:'Sentado con distracciones', kind:'obediencia', desc:'Mantener "sentado" con estímulos externos.'},
+  {name:'Tumbado a distancia', kind:'obediencia', desc:'Ejecutar "tumbado" a distancia del guía.'},
+  {name:'Sesión de juego avanzado', kind:'juego', desc:'Juego dirigido para reforzar impulsos y autocontrol.'},
+  {name:'Quieto con distracciones', kind:'obediencia', desc:'Mantener la posición con distracciones altas.'},
+  {name:'Llamada avanzada', kind:'obediencia', desc:'Llamada fiable en espacios abiertos.'},
+  {name:'Caminar junto sin correa', kind:'obediencia', desc:'Caminar junto al guía sin tensión de correa.'},
+  {name:'Sesión de juego', kind:'juego', desc:'Día de juego libre de consolidación.'},
+  {name:'Repaso general avanzado', kind:'obediencia', desc:'Repaso de todos los ejercicios del curso avanzado.'},
+];
+const BEHAVIOR_TEMPLATE = [
+  {name:'Evaluación inicial del problema', kind:'simple', desc:'Observación y registro del comportamiento problemático.'},
+  {name:'Desensibilización — nivel 1', kind:'obediencia', desc:'Exposición controlada de baja intensidad al estímulo.'},
+  {name:'Desensibilización — nivel 2', kind:'obediencia', desc:'Exposición controlada de intensidad media al estímulo.'},
+  {name:'Sesión de juego de refuerzo', kind:'juego', desc:'Juego para reforzar la relajación, solo confirmación.'},
+  {name:'Consolidación y repaso final', kind:'obediencia', desc:'Repaso general del proceso trabajado.'},
+];
+const EXTRA_CONTENT = [
+  {title:'Juegos de olfato en casa', emoji:'👃', desc:'Ejercicios sencillos de olfato para estimular a tu perro en casa, usando premios escondidos.'},
+  {title:'Cómo cepillar correctamente', emoji:'🪮', desc:'Guía paso a paso para un cepillado cómodo y sin estrés según el tipo de pelo.'},
+  {title:'Snacks saludables caseros', emoji:'🦴', desc:'Recetas sencillas de premios caseros aptos para el adiestramiento.'},
+  {title:'Socialización con otros perros', emoji:'🐕', desc:'Consejos para presentaciones seguras y positivas entre perros.'},
+  {title:'Rutina de paseo ideal', emoji:'🚶', desc:'Cómo estructurar el paseo diario para un equilibrio físico y mental óptimo.'},
+  {title:'Trucos divertidos: choca esos cinco', emoji:'🖐️', desc:'Aprende a enseñar un truco divertido paso a paso.'},
+];
+const EVAL_QUESTIONS = [
+  '¿Tu perro tira de la correa durante los paseos?',
+  '¿Reacciona ladrando a otros perros?',
+  '¿Responde a su nombre de forma consistente?',
+  '¿Se sienta cuando se lo pides sin repetir la orden?',
+  '¿Muestra ansiedad por separación al quedarse solo?',
+  '¿Es reactivo ante ruidos fuertes (timbre, truenos)?',
+  '¿Conoce alguna orden básica (sentado, quieto, ven)?',
+  '¿Realiza suficiente ejercicio físico a diario?',
+];
+const EVAL_OPTS = ['Nunca','A veces','Frecuentemente','Siempre'];
+
+/* ---------------- date utils ---------------- */
+function parseDate(s){ return new Date(s+'T00:00:00'); }
+function fmtDate(d){ return d.toISOString().slice(0,10); }
+function addDays(s,n){ const d=parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); }
+function daysBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
+function monthKey(s){ return s.slice(0,7); }
+function dowLabel(s){ return ['dom','lun','mar','mié','jue','vie','sáb'][parseDate(s).getDay()]; }
+function humanDate(s){
+  const d=parseDate(s);
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+}
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- default state ---------------- */
+function makeClient(over){
+  const base = {
+    id:'c1', name:'Laura Gómez', phone:'600 111 222', address:'Calle Mayor 12, Madrid',
+    dogName:'Toby', dogBreed:'Border Collie', dogAge:'3 años', dogNotes:'',
+    onboarded:true,
+    subscriptionStatus:'active',
+    lastEntryDate:'2026-09-15',
+    lastTrainingSessionDate:'',
+    xpMonthly:150, xpMonthlyMonth:'2026-09',
+    xpBank:320,
+    lecturaClaimedMonth:'',
+    courses:{
+      basico:{unlocked:true, completed:false, currentSession:1, totalSessions:BASICO_SESSIONS.length},
+      avanzado:{unlocked:false, completed:false, currentSession:1, totalSessions:AVANZADO_SESSIONS.length},
+      conducta:{unlocked:false},
+    },
+    behaviorProblems:[
+      {id:'correa', name:'Tirar de la correa', status:'not_started', currentSession:1, totalSessions:BEHAVIOR_TEMPLATE.length},
+      {id:'timbre', name:'Reactividad al timbre', status:'not_started', currentSession:1, totalSessions:BEHAVIOR_TEMPLATE.length},
+    ],
+    activeBehaviorId:null,
+    evaluations:[{date:'2026-08-26'}],
+    notifications:[
+      {id:'n1', date:'2026-09-15', title:'¡Nueva sesión disponible!', body:'Ya puedes completar tu próxima sesión de adiestramiento básico.', read:false},
+      {id:'n2', date:'2026-09-12', title:'Recordatorio: evaluación mensual', body:'No olvides completar tu evaluación de conducta desde tu perfil.', read:false},
+      {id:'n3', date:'2026-09-08', title:'¡Has ganado 25 XP!', body:'Completaste una sesión de adiestramiento. Sigue así.', read:true},
+      {id:'n4', date:'2026-08-30', title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. ¡Empecemos a entrenar!', read:true},
+    ],
+    bookingsTraining:[],
+    bookingsResidencia:[],
+  };
+  return Object.assign(base, over||{});
+}
+
+function makeDefaultState(){
+  const simDate = '2026-09-15';
+  const clientB = makeClient({
+    id:'c2', name:'Marcos Ruiz', dogName:'Luna', dogBreed:'Labrador', dogAge:'2 años',
+    subscriptionStatus:'grace', xpMonthly:60, xpBank:0,
+    courses:{basico:{unlocked:true,completed:true,currentSession:11,totalSessions:BASICO_SESSIONS.length},
+             avanzado:{unlocked:true,completed:false,currentSession:3,totalSessions:AVANZADO_SESSIONS.length},
+             conducta:{unlocked:true}},
+    notifications:[], evaluations:[],
+    bookingsResidencia:[
+      {checkin:addDays(simDate,3), checkout:addDays(simDate,6), nights:3, pricePerNight:20, total:60, discount:0, paidAmount:60, paid:true, createdSimDate:simDate}
+    ],
+  });
+  const clientC = makeClient({
+    id:'c3', name:'Elena Ferrer', dogName:'Rocky', dogBreed:'Mestizo', dogAge:'5 años',
+    subscriptionStatus:'cancelled', xpMonthly:0, xpBank:0,
+    courses:{basico:{unlocked:true,completed:false,currentSession:2,totalSessions:BASICO_SESSIONS.length},
+             avanzado:{unlocked:false,completed:false,currentSession:1,totalSessions:AVANZADO_SESSIONS.length},
+             conducta:{unlocked:false}},
+    notifications:[], evaluations:[],
+  });
+  return {
+    meta:{ simDate, view:'client', calTab:'training' },
+    monthlyReading:{ title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
+    admin:{ residenceCapacity:3, calendarClosures:{ training:{}, residencia:{} } },
+    clients:[ makeClient({}), clientB, clientC ],
+  };
+}
+
+let S = null;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ S = JSON.parse(raw); return; }
+  }catch(e){ console.warn('Estado corrupto, reiniciando', e); }
+  S = makeDefaultState();
+  saveState();
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }
+function activeClient(){ return S.clients[0]; }
+
+/* ---------------- normalization (xp monthly expiry) ---------------- */
+function normalize(){
+  const mk = monthKey(S.meta.simDate);
+  S.clients.forEach(c=>{
+    if(c.xpMonthlyMonth !== mk){ c.xpMonthly = 0; c.xpMonthlyMonth = mk; }
+  });
+  saveState();
+}
+
+/* ---------------- pet state ---------------- */
+function isOnResidenceToday(c){
+  return c.bookingsResidencia.some(b=> b.paid && S.meta.simDate>=b.checkin && S.meta.simDate<b.checkout );
+}
+function computePetStateDisplay(c){
+  if(c._petTemp && !c._petTemp.consumed){
+    c._petTemp.consumed = true; saveState();
+    if(c._petTemp.key==='entrenando') return {key:'entrenando', label:'Entrenando', emoji:'🐶', badge:'🏋️'};
+    if(c._petTemp.key==='jugando') return {key:'jugando', label:'¡Jugando!', emoji:'🐶', badge:'🎾'};
+    if(c._petTemp.key==='graduado') return {key:'graduado', label:'¡Graduado!', emoji:'🐶', badge:'🎓'};
+  }
+  if(isOnResidenceToday(c)) return {key:'vacaciones', label:'De vacaciones', emoji:'🐶', badge:'🧳'};
+  const diff = daysBetween(c.lastEntryDate, S.meta.simDate);
+  if(diff<=0) return {key:'contento', label:'Contento', emoji:'🐶', badge:'💖'};
+  if(diff<=2) return {key:'dormido', label:'Durmiendo', emoji:'🐶', badge:'💤'};
+  return {key:'triste', label:'Triste', emoji:'🐶', badge:'🌧️'};
+}
+
+/* ---------------- navigation ---------------- */
+let navCtx = {};
+function nav(id, ctx){
+  navCtx = ctx || {};
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('phoneScreen').scrollTop = 0;
+  const renderer = RENDERERS[id];
+  if(renderer) renderer();
+}
+function goHome(){
+  const c = activeClient();
+  c.lastEntryDate = S.meta.simDate;
+  saveState();
+  nav('screenHome');
+}
+
+/* ---------------- HOME render ---------------- */
+function renderHome(){
+  const c = activeClient();
+  document.getElementById('homeGreeting').textContent = `Hola, ${c.name.split(' ')[0]} y ${c.dogName}`;
+  const unread = c.notifications.filter(n=>!n.read).length;
+  const badge = document.getElementById('bellBadge');
+  if(unread>0){ badge.textContent=unread; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
+
+  const ps = computePetStateDisplay(c);
+  document.getElementById('mascotEmoji').textContent = ps.emoji;
+  document.getElementById('mascotBadge').textContent = ps.badge;
+  document.getElementById('mascotLabel').textContent = ps.label;
+
+  document.getElementById('xpMonthlyVal').textContent = c.xpMonthly + ' XP';
+  document.getElementById('xpBankVal').textContent = c.xpBank + ' XP';
+
+  document.getElementById('courseRow').innerHTML = renderCourseTile('basico')+renderCourseTile('avanzado')+renderCourseTile('conducta');
+}
+function usedSessionToday(c){ return c.lastTrainingSessionDate === S.meta.simDate; }
+function renderCourseTile(key){
+  const c = activeClient();
+  if(key==='conducta'){
+    const unlocked = c.courses.basico.completed;
+    if(!unlocked){
+      return `<div class="tile course-tile locked"><span class="lock-ic">🔒</span><div class="info">Supera el adiestramiento básico para desbloquear</div></div>`;
+    }
+    const active = c.behaviorProblems.find(b=>b.id===c.activeBehaviorId);
+    let info;
+    if(active) info = `${escapeHtml(active.name)}<br>Sesión ${active.currentSession} de ${active.totalSessions}`;
+    else info = 'Elige un problema de conducta';
+    if(usedSessionToday(c)) info += '<br><b>Disponible mañana</b>';
+    return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">🧩 Conducta</div><div class="info">${info}</div></button>`;
+  }
+  const course = c.courses[key];
+  const total = course.totalSessions;
+  const label = key==='basico' ? '🎯 Básico' : '🚀 Avanzado';
+  if(key==='avanzado' && !course.unlocked){
+    return `<div class="tile course-tile locked"><span class="lock-ic">🔒</span><div class="info">Supera el adiestramiento básico para desbloquear</div></div>`;
+  }
+  if(course.completed){
+    return `<div class="course-tile locked"><div class="name">${label}</div><div class="info">¡Curso completado! 🎓</div></div>`;
+  }
+  const sessions = key==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
+  const exName = sessions[course.currentSession-1].name;
+  let info = `Sesión ${course.currentSession} de ${total} — ${escapeHtml(exName)}`;
+  if(usedSessionToday(c)) info += '<br><b>Disponible mañana</b>';
+  else info += '<br>Toca para realizar la siguiente sesión';
+  return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${label}</div><div class="info">${info}</div></button>`;
+}
+
+function openCourseSession(key){
+  const c = activeClient();
+  if(usedSessionToday(c)){ nav('screenBlocked'); return; }
+  nav('screenSession', {mode:'course', course:key});
+}
+
+/* ---------------- SESSION render ---------------- */
+function renderSession(){
+  const c = activeClient();
+  let sessionObj, label;
+  if(navCtx.mode==='course'){
+    const course = c.courses[navCtx.course];
+    const arr = navCtx.course==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
+    sessionObj = arr[course.currentSession-1];
+    label = (navCtx.course==='basico'?'Básico':'Avanzado') + ` · Sesión ${course.currentSession} de ${course.totalSessions}`;
+  } else {
+    const bp = c.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
+    sessionObj = BEHAVIOR_TEMPLATE[bp.currentSession-1];
+    label = bp.name + ` · Sesión ${bp.currentSession} de ${bp.totalSessions}`;
+  }
+  document.getElementById('sessionCourseLabel').textContent = label;
+  document.getElementById('sessionTitle').textContent = sessionObj.name;
+  document.getElementById('sessionDesc').textContent = sessionObj.desc;
+
+  const box = document.getElementById('sessionInteraction');
+  if(sessionObj.kind==='juego'){
+    box.innerHTML = `<button class="btn" onclick="completeSession('confirm')">🎾 Confirmar sesión completada</button>`;
+  } else if(sessionObj.kind==='obediencia'){
+    const ranges = [['1-2','⭐'],['3-4','⭐⭐'],['5-6','⭐⭐⭐'],['7-8','⭐⭐⭐⭐'],['9-10','⭐⭐⭐⭐⭐']];
+    box.innerHTML = `<p class="card-sub" style="margin-bottom:6px;">¿Cuántos aciertos sobre 10 ha tenido?</p><div class="face-row">${
+      ranges.map(r=>`<div class="face-btn" onclick="completeSession('${r[0]}')">${r[1]}<small>${r[0]}</small></div>`).join('')
+    }</div>`;
+  } else {
+    const faces = [['😖','Difícil'],['😐','Regular'],['🙂','Bien'],['😄','¡Genial!']];
+    box.innerHTML = `<p class="card-sub" style="margin-bottom:6px;">¿Cómo se ha sentido tu perro?</p><div class="face-row">${
+      faces.map(f=>`<div class="face-btn" onclick="completeSession('${f[1]}')">${f[0]}<small>${f[1]}</small></div>`).join('')
+    }</div>`;
+  }
+}
+
+function completeSession(result){
+  const c = activeClient();
+  c.xpMonthly += 25;
+  c.lastTrainingSessionDate = S.meta.simDate;
+  let petTemp = 'entrenando';
+
+  if(navCtx.mode==='course'){
+    const course = c.courses[navCtx.course];
+    const arr = navCtx.course==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
+    const kind = arr[course.currentSession-1].kind;
+    if(kind==='juego') petTemp='jugando';
+    course.currentSession += 1;
+    if(course.currentSession > course.totalSessions){
+      course.completed = true;
+      petTemp = 'graduado';
+      if(navCtx.course==='basico'){
+        c.courses.avanzado.unlocked = true;
+        c.courses.conducta.unlocked = true;
+      }
+    }
+  } else {
+    const bp = c.behaviorProblems.find(b=>b.id===navCtx.behaviorId);
+    const kind = BEHAVIOR_TEMPLATE[bp.currentSession-1].kind;
+    if(kind==='juego') petTemp='jugando';
+    bp.currentSession += 1;
+    if(bp.currentSession > bp.totalSessions){
+      bp.status = 'completed';
+      petTemp = 'graduado';
+      c.activeBehaviorId = null;
+    }
+  }
+  c._petTemp = {key:petTemp, consumed:false};
+  saveState();
+  alert('¡Sesión completada! Has ganado 25 XP.');
+  goHome();
+}
+
+/* ---------------- CONDUCTA ---------------- */
+function renderConducta(){
+  const c = activeClient();
+  const list = document.getElementById('conductaList');
+  list.innerHTML = c.behaviorProblems.map(bp=>{
+    const isActive = c.activeBehaviorId===bp.id;
+    const blocked = c.activeBehaviorId && c.activeBehaviorId!==bp.id;
+    let status = 'No iniciado';
+    if(bp.status==='completed') status = 'Completado ✅';
+    else if(isActive || bp.status==='in_progress') status = `En curso — Sesión ${bp.currentSession} de ${bp.totalSessions}`;
+    const cls = ['behavior-item', isActive?'active-item':'', (blocked||bp.status==='completed')?'disabled':''].join(' ');
+    return `<div class="${cls}" onclick="selectBehavior('${bp.id}')">
+      <div class="name">${escapeHtml(bp.name)}</div>
+      <div class="st">${status}</div>
+    </div>`;
+  }).join('');
+}
+function selectBehavior(id){
+  const c = activeClient();
+  const bp = c.behaviorProblems.find(b=>b.id===id);
+  if(bp.status==='completed'){ alert('Este problema de conducta ya está completado.'); return; }
+  if(c.activeBehaviorId && c.activeBehaviorId!==id){
+    alert('Ya tienes un problema de conducta en curso. Termina todas sus sesiones antes de elegir otro.');
+    return;
+  }
+  if(!c.activeBehaviorId){ c.activeBehaviorId=id; bp.status='in_progress'; saveState(); }
+  if(usedSessionToday(c)){ nav('screenBlocked'); return; }
+  nav('screenSession', {mode:'behavior', behaviorId:id});
+}
+
+/* ---------------- XP MENSUAL exchange ---------------- */
+let selectedService = null;
+function openXpExchange(){ nav('screenXpServices'); }
+function renderXpServices(){
+  const c = activeClient();
+  document.getElementById('xpServicesAvail').textContent = c.xpMonthly + ' XP';
+  document.getElementById('xpServicesEur').textContent = (c.xpMonthly*XP_TO_EUR).toFixed(2) + '€';
+  document.getElementById('svcList').innerHTML = SERVICES.map(s=>`
+    <div class="svc-item">
+      <div><b>${s.name}</b><br><span class="card-sub">${s.info}</span></div>
+      <div style="text-align:right;">
+        <div class="p">${s.price}€</div>
+        <button class="btn btn-sm" onclick="chooseService('${s.id}')">Elegir</button>
+      </div>
+    </div>`).join('');
+}
+function chooseService(id){
+  selectedService = SERVICES.find(s=>s.id===id);
+  nav('screenXpBooking');
+}
+let trainingSel = {date:null, hour:null};
+function renderXpBooking(){
+  trainingSel = {date:null, hour:null};
+  document.getElementById('bookingSvcTitle').textContent = 'Reservar: ' + selectedService.name;
+  const grid = document.getElementById('trainingDayGrid');
+  let html='';
+  for(let i=0;i<21;i++){
+    const d = addDays(S.meta.simDate, i);
+    const closed = S.admin.calendarClosures.training[d]==='full';
+    html += `<div class="daycell ${closed?'closed':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+  }
+  grid.innerHTML = html;
+  document.getElementById('trainingHourRow').innerHTML='';
+  document.getElementById('trainingPricebox').innerHTML='';
+  document.getElementById('trainingPayBtn').disabled = true;
+}
+function pickTrainingDay(d){
+  trainingSel.date = d; trainingSel.hour=null;
+  document.querySelectorAll('#trainingDayGrid .daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
+  document.getElementById('trainingHourRow').innerHTML = FIXED_HOURS.map(h=>{
+    const closed = closedHours.includes(h);
+    return `<div class="hour-chip ${closed?'closed':''}" onclick="${closed?'':`pickTrainingHour('${h}')`}">${h}</div>`;
+  }).join('');
+  document.getElementById('trainingPricebox').innerHTML='';
+  document.getElementById('trainingPayBtn').disabled = true;
+}
+function pickTrainingHour(h){
+  trainingSel.hour = h;
+  document.querySelectorAll('#trainingHourRow .hour-chip').forEach(el=>el.classList.toggle('selected', el.textContent===h));
+  const c = activeClient();
+  const discount = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const final = (selectedService.price - discount).toFixed(2);
+  document.getElementById('trainingPricebox').innerHTML = `
+    <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
+    <div class="line"><span>Descuento XP mensual</span><span>-${discount.toFixed(2)}€</span></div>
+    <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>`;
+  document.getElementById('trainingPayBtn').disabled = false;
+}
+function payTrainingBooking(){
+  const c = activeClient();
+  const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const usedXp = Math.round(discountEur/XP_TO_EUR);
+  c.xpMonthly -= usedXp;
+  c.bookingsTraining.push({
+    date:trainingSel.date, hour:trainingSel.hour, service:selectedService.name,
+    price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
+    paid:true, createdSimDate:S.meta.simDate,
+  });
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.`, read:false});
+  saveState();
+  alert('¡Reserva confirmada y pagada (simulado)!');
+  goHome();
+}
+
+/* ---------------- HUCHA / residencia ---------------- */
+function openResidenceFromBank(){ nav('screenResidence'); }
+function renderResidence(){
+  const c = activeClient();
+  document.getElementById('residBankVal').textContent = c.xpBank + ' XP';
+  document.getElementById('residBankEur').textContent = (c.xpBank*XP_TO_EUR).toFixed(2)+'€';
+  const min = S.meta.simDate;
+  const max = addDays(S.meta.simDate, 365);
+  const ci = document.getElementById('residCheckin'); ci.min=min; ci.max=max; ci.value=addDays(min,1);
+  const co = document.getElementById('residCheckout'); co.min=min; co.max=max; co.value=addDays(min,2);
+  document.getElementById('residResult').innerHTML='';
+}
+function nightsInRange(checkin, checkout){
+  const n=[]; let d=checkin;
+  while(d<checkout){ n.push(d); d=addDays(d,1); }
+  return n;
+}
+function nightOccupancy(night){
+  let count=0;
+  S.clients.forEach(cl=>{
+    cl.bookingsResidencia.forEach(b=>{
+      if(b.paid && night>=b.checkin && night<b.checkout) count++;
+    });
+  });
+  return count;
+}
+function checkResidenceAvailability(){
+  const checkin = document.getElementById('residCheckin').value;
+  const checkout = document.getElementById('residCheckout').value;
+  const resultBox = document.getElementById('residResult');
+  if(!checkin || !checkout || checkout<=checkin){
+    resultBox.innerHTML = `<div class="note-box">Selecciona un rango de fechas válido (salida posterior a entrada).</div>`;
+    return;
+  }
+  const nights = nightsInRange(checkin, checkout);
+  const problems = [];
+  nights.forEach(n=>{
+    if(S.admin.calendarClosures.residencia[n]==='full') problems.push(`${humanDate(n)}: día cerrado`);
+    else if(nightOccupancy(n) >= S.admin.residenceCapacity) problems.push(`${humanDate(n)}: aforo completo`);
+  });
+  if(problems.length){
+    resultBox.innerHTML = `<div class="note-box">No disponible en estas fechas:<br>${problems.map(escapeHtml).join('<br>')}</div>`;
+    return;
+  }
+  const c = activeClient();
+  const total = nights.length*20;
+  const discount = Math.min(c.xpBank*XP_TO_EUR, total);
+  const final = (total-discount).toFixed(2);
+  resultBox.innerHTML = `
+    <div class="pricebox">
+      <div class="line"><span>${nights.length} noche(s) x 20€</span><span>${total.toFixed(2)}€</span></div>
+      <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
+      <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
+    </div>
+    <button class="btn" onclick="payResidenceBooking('${checkin}','${checkout}',${nights.length},${total},${discount})">Reservar y pagar (simulado)</button>`;
+}
+function payResidenceBooking(checkin, checkout, nights, total, discount){
+  const c = activeClient();
+  c.bookingsResidencia.push({checkin, checkout, nights, pricePerNight:20, total, discount, paidAmount:total-discount, paid:true, createdSimDate:S.meta.simDate});
+  c.xpBank = 0;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia confirmada', body:`Del ${humanDate(checkin)} al ${humanDate(checkout)}.`, read:false});
+  saveState();
+  alert('¡Reserva de residencia confirmada y pagada (simulado)! Tu hucha de XP se ha puesto a 0.');
+  goHome();
+}
+
+/* ---------------- NOTIFICATIONS ---------------- */
+function renderNotifications(){
+  const c = activeClient();
+  const sorted = [...c.notifications].sort((a,b)=> b.date.localeCompare(a.date));
+  document.getElementById('notifList').innerHTML = sorted.map(n=>`
+    <div class="notif-item ${n.read?'':'unread'}" onclick="markRead('${n.id}')">
+      <div class="notif-date">${humanDate(n.date)}</div>
+      <div class="notif-title">${escapeHtml(n.title)}</div>
+      <div class="notif-body">${escapeHtml(n.body)}</div>
+    </div>`).join('') || '<p class="card-sub">Sin notificaciones.</p>';
+}
+function markRead(id){
+  const c = activeClient();
+  const n = c.notifications.find(x=>x.id===id);
+  if(n){ n.read=true; saveState(); renderNotifications(); renderHome(); }
+}
+
+/* ---------------- CONTENIDO EXTRA ---------------- */
+function renderExtra(){
+  document.getElementById('extraList').innerHTML = EXTRA_CONTENT.map((e,i)=>`
+    <div class="accordion-item" id="extra${i}">
+      <div class="accordion-head" onclick="document.getElementById('extra${i}').classList.toggle('open')">
+        <span class="em">${e.emoji}</span><span class="t">${escapeHtml(e.title)}</span><span>▾</span>
+      </div>
+      <div class="accordion-body">
+        <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo</div>
+        ${escapeHtml(e.desc)}
+      </div>
+    </div>`).join('');
+}
+
+/* ---------------- LECTURA ---------------- */
+function renderLectura(){
+  const c = activeClient();
+  const r = S.monthlyReading;
+  const claimed = c.lecturaClaimedMonth === monthKey(S.meta.simDate);
+  let preview;
+  if(r.dataUrl && r.mime && r.mime.startsWith('image/')){
+    preview = `<img src="${r.dataUrl}" style="border-radius:14px;">`;
+  } else if(r.dataUrl){
+    preview = `<a class="btn btn-outline" href="${r.dataUrl}" target="_blank" rel="noopener">Abrir documento (PDF)</a>`;
+  } else {
+    preview = `<div class="placeholder-img"><span class="em">📄</span>Aquí se mostraría el PDF/imagen real de la lectura mensual</div>`;
+  }
+  document.getElementById('lecturaBody').innerHTML = `
+    <div class="card">
+      <div class="card-title">${escapeHtml(r.title)}</div>
+      <div class="card-sub">Publicada el ${humanDate(r.uploadedDate)}</div>
+    </div>
+    ${preview}
+    <button class="btn" style="margin-top:14px;" ${claimed?'disabled':''} onclick="claimReading()">
+      ${claimed ? 'Ya reclamado este mes ✅' : 'Marcar como leída y reclamar 800 XP'}
+    </button>`;
+}
+function claimReading(){
+  const c = activeClient();
+  c.xpBank += 800;
+  c.lecturaClaimedMonth = monthKey(S.meta.simDate);
+  c._petTemp = {key:'graduado', consumed:false};
+  saveState();
+  alert('¡Has ganado 800 XP para tu hucha!');
+  renderLectura();
+}
+
+/* ---------------- PERFIL ---------------- */
+function renderPerfil(){
+  const c = activeClient();
+  document.getElementById('pfName').value = c.name;
+  document.getElementById('pfPhone').value = c.phone;
+  document.getElementById('pfAddress').value = c.address;
+  document.getElementById('pfDogName').value = c.dogName;
+  document.getElementById('pfDogBreed').value = c.dogBreed;
+  document.getElementById('pfDogAge').value = c.dogAge;
+  document.getElementById('pfDogNotes').value = c.dogNotes;
+  const badge = document.getElementById('subBadge');
+  const map = {active:['Activa','badge-active'], pending:['Pendiente de pago','badge-pending'], grace:['2 días de gracia','badge-grace'], cancelled:['Dada de baja','badge-cancelled']};
+  const [txt,cls] = map[c.subscriptionStatus];
+  badge.textContent = txt; badge.className='badge '+cls;
+  document.getElementById('evalHistory').innerHTML = c.evaluations.length
+    ? 'Historial de evaluaciones:<br>' + c.evaluations.map(e=>humanDate(e.date)).join('<br>')
+    : 'Sin evaluaciones previas.';
+}
+function saveProfile(){
+  const c = activeClient();
+  c.name = document.getElementById('pfName').value || c.name;
+  c.phone = document.getElementById('pfPhone').value;
+  c.address = document.getElementById('pfAddress').value;
+  c.dogName = document.getElementById('pfDogName').value || c.dogName;
+  c.dogBreed = document.getElementById('pfDogBreed').value;
+  c.dogAge = document.getElementById('pfDogAge').value;
+  c.dogNotes = document.getElementById('pfDogNotes').value;
+  saveState();
+  alert('Datos guardados.');
+  renderHome();
+}
+function unsubscribe(){
+  if(!confirm('¿Seguro que quieres darte de baja?')) return;
+  const c = activeClient();
+  c.subscriptionStatus = 'cancelled';
+  saveState();
+  renderPerfil();
+}
+
+/* ---------------- EVALUACION ---------------- */
+function renderEvaluacion(){
+  document.getElementById('evalForm').innerHTML = EVAL_QUESTIONS.map((q,i)=>`
+    <div class="eval-q">
+      <p>${i+1}. ${escapeHtml(q)}</p>
+      <div class="eval-opts">${EVAL_OPTS.map(o=>`<label><input type="radio" name="eq${i}" value="${o}">${o}</label>`).join('')}</div>
+    </div>`).join('');
+}
+function submitEvaluation(){
+  const c = activeClient();
+  c.evaluations.push({date:S.meta.simDate});
+  saveState();
+  alert('Evaluación enviada. Gracias.');
+  nav('screenPerfil');
+}
+
+/* ---------------- ONBOARDING ---------------- */
+function submitOnboarding(){
+  const c = activeClient();
+  const name = document.getElementById('obName').value.trim();
+  const dogName = document.getElementById('obDogName').value.trim();
+  if(!name || !dogName){ alert('Completa al menos tu nombre y el de tu perro.'); return; }
+  c.name = name;
+  c.phone = document.getElementById('obPhone').value;
+  c.address = document.getElementById('obAddress').value;
+  c.dogName = dogName;
+  c.dogBreed = document.getElementById('obDogBreed').value;
+  c.dogAge = document.getElementById('obDogAge').value;
+  c.onboarded = true;
+  c.lastEntryDate = S.meta.simDate;
+  saveState();
+  goHome();
+}
+
+/* ---------------- ADMIN ---------------- */
+function toggleView(){
+  S.meta.view = S.meta.view==='client' ? 'admin' : 'client';
+  saveState();
+  applyView();
+}
+function applyView(){
+  document.getElementById('clientAppWrap').classList.toggle('hidden', S.meta.view!=='client');
+  document.getElementById('adminApp').classList.toggle('hidden', S.meta.view!=='admin');
+  if(S.meta.view==='admin') renderAdmin();
+}
+function renderAdmin(){
+  document.getElementById('adminDateLabel').textContent = humanDate(S.meta.simDate);
+  const r = S.monthlyReading;
+  document.getElementById('adminReadingInfo').textContent = `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`;
+  document.getElementById('adminCapacity').value = S.admin.residenceCapacity;
+  renderAdminCalendar();
+  renderAdminStats();
+  renderAdminClients();
+}
+function adminUploadReading(){
+  const input = document.getElementById('adminReadingFile');
+  const file = input.files[0];
+  if(!file){ alert('Selecciona un archivo primero.'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    S.monthlyReading = {title:'Lectura de '+humanDate(S.meta.simDate), uploadedDate:S.meta.simDate, dataUrl:e.target.result, mime:file.type};
+    saveState();
+    renderAdmin();
+    alert('Lectura mensual actualizada.');
+  };
+  reader.readAsDataURL(file);
+}
+function adminSwitchCalTab(tab){
+  S.meta.calTab = tab; saveState();
+  document.getElementById('tabTraining').classList.toggle('active', tab==='training');
+  document.getElementById('tabResidencia').classList.toggle('active', tab==='residencia');
+  document.getElementById('capacityField').classList.toggle('hidden', tab!=='residencia');
+  renderAdminCalendar();
+}
+function renderAdminCalendar(){
+  const tab = S.meta.calTab || 'training';
+  document.getElementById('capacityField').classList.toggle('hidden', tab!=='residencia');
+  const grid = document.getElementById('adminCalGrid');
+  let html='';
+  for(let i=0;i<28;i++){
+    const d = addDays(S.meta.simDate, i);
+    const closed = S.admin.calendarClosures[tab][d]==='full';
+    let hoursHtml='';
+    if(tab==='training'){
+      const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
+      hoursHtml = `<div class="admin-hours">${FIXED_HOURS.map(h=>{
+        const hc = closedHours.includes(h);
+        return `<span class="admin-hour ${hc?'closed':''}" onclick="event.stopPropagation();adminToggleHour('${d}','${h}')">${h}</span>`;
+      }).join('')}</div>`;
+    }
+    html += `<div class="admin-daycell ${closed?'closed':''}">
+      <div class="ad-daytoggle" onclick="adminToggleDay('${tab}','${d}')">${parseDate(d).getDate()}<small>${dowLabel(d)}</small></div>
+      ${hoursHtml}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+function adminToggleDay(tab,d){
+  const closures = S.admin.calendarClosures[tab];
+  closures[d] = closures[d]==='full' ? undefined : 'full';
+  if(!closures[d]) delete closures[d];
+  saveState();
+  renderAdminCalendar();
+}
+function adminToggleHour(d,h){
+  const key = d+'_hours';
+  const arr = S.admin.calendarClosures.training[key] || [];
+  const idx = arr.indexOf(h);
+  if(idx>=0) arr.splice(idx,1); else arr.push(h);
+  S.admin.calendarClosures.training[key] = arr;
+  saveState();
+  renderAdminCalendar();
+}
+function adminSetCapacity(v){
+  S.admin.residenceCapacity = Math.max(0, parseInt(v)||0);
+  saveState();
+}
+function renderAdminStats(){
+  const mk = monthKey(S.meta.simDate);
+  let revenue = 0, active=0, cancelled=0;
+  S.clients.forEach(c=>{
+    c.bookingsTraining.forEach(b=>{ if(monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
+    c.bookingsResidencia.forEach(b=>{ if(monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
+    if(c.subscriptionStatus==='active') active++;
+    if(c.subscriptionStatus==='cancelled') cancelled++;
+  });
+  document.getElementById('statRevenue').textContent = revenue.toFixed(2)+'€';
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statCancelled').textContent = cancelled;
+}
+function renderAdminClients(){
+  document.getElementById('adminClientList').innerHTML = S.clients.map(c=>{
+    const map = {active:'Activa', pending:'Pendiente', grace:'2 días gracia', cancelled:'Baja'};
+    return `<div class="client-card" onclick="openClientModal('${c.id}')">
+      <div><div class="nm">${escapeHtml(c.name)} · 🐶 ${escapeHtml(c.dogName)}</div>
+      <div class="meta">XP mensual: ${c.xpMonthly} · Hucha: ${c.xpBank} · ${map[c.subscriptionStatus]}</div></div>
+      <div>➜</div>
+    </div>`;
+  }).join('');
+}
+function openClientModal(id){
+  const c = S.clients.find(x=>x.id===id);
+  const courseTxt = c.courses.basico.completed
+    ? (c.courses.avanzado.completed ? 'Avanzado completado' : `Avanzado — sesión ${c.courses.avanzado.currentSession}/${c.courses.avanzado.totalSessions}`)
+    : `Básico — sesión ${c.courses.basico.currentSession}/${c.courses.basico.totalSessions}`;
+  const trainingHist = c.bookingsTraining.map(b=>`${humanDate(b.date)} ${b.hour} — ${b.service} (${b.paidAmount.toFixed(2)}€)`).join('<br>') || 'Sin reservas';
+  const residHist = c.bookingsResidencia.map(b=>`${humanDate(b.checkin)} → ${humanDate(b.checkout)} (${b.paidAmount.toFixed(2)}€)`).join('<br>') || 'Sin reservas';
+  document.getElementById('clientModalBody').innerHTML = `
+    <h3>${escapeHtml(c.name)} · 🐶 ${escapeHtml(c.dogName)}</h3>
+    <div class="kv"><span>Teléfono</span><span>${escapeHtml(c.phone)}</span></div>
+    <div class="kv"><span>Dirección</span><span>${escapeHtml(c.address)}</span></div>
+    <div class="kv"><span>XP mensual</span><span>${c.xpMonthly}</span></div>
+    <div class="kv"><span>Hucha de XP</span><span>${c.xpBank}</span></div>
+    <div class="kv"><span>Curso actual</span><span>${courseTxt}</span></div>
+    <div class="kv"><span>Última sesión</span><span>${c.lastTrainingSessionDate ? humanDate(c.lastTrainingSessionDate) : '—'}</span></div>
+    <div class="kv"><span>Estado de pago</span><span>${c.subscriptionStatus}</span></div>
+    <div class="kv"><span>Evaluaciones</span><span>${c.evaluations.length}</span></div>
+    <h3 style="margin-top:14px;font-size:13px;">Historial de adiestramiento</h3>
+    <p style="font-size:12px;">${trainingHist}</p>
+    <h3 style="font-size:13px;">Historial de residencia</h3>
+    <p style="font-size:12px;">${residHist}</p>
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
+  document.getElementById('clientModal').classList.remove('hidden');
+}
+function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
+
+/* ---------------- DEBUG BAR ---------------- */
+function refreshDebugBar(){
+  document.getElementById('dbgDateLabel').textContent = humanDate(S.meta.simDate) + ' ('+S.meta.simDate+')';
+  document.getElementById('dbgDateInput').value = S.meta.simDate;
+}
+function afterDateChange(){
+  normalize();
+  refreshDebugBar();
+  const activeScreen = document.querySelector('.screen.active');
+  if(activeScreen && RENDERERS[activeScreen.id]) RENDERERS[activeScreen.id]();
+  if(S.meta.view==='admin') renderAdmin();
+}
+function debugShiftDay(n){
+  S.meta.simDate = addDays(S.meta.simDate, n);
+  saveState();
+  afterDateChange();
+}
+function debugSetDate(v){
+  if(!v) return;
+  S.meta.simDate = v;
+  saveState();
+  afterDateChange();
+}
+function debugGotoNextMonth(){
+  const d = parseDate(S.meta.simDate);
+  d.setMonth(d.getMonth()+1, 1);
+  S.meta.simDate = fmtDate(d);
+  saveState();
+  afterDateChange();
+}
+function debugShowOnboarding(){
+  const c = activeClient();
+  c.onboarded = false;
+  saveState();
+  S.meta.view='client'; saveState(); applyView();
+  nav('screenOnboarding');
+}
+function debugResetState(){
+  if(!confirm('¿Reiniciar todos los datos del prototipo?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  loadState();
+  boot();
+}
+
+/* ---------------- RENDERERS MAP + BOOT ---------------- */
+const RENDERERS = {
+  screenHome: renderHome,
+  screenNotifications: renderNotifications,
+  screenXpServices: renderXpServices,
+  screenXpBooking: renderXpBooking,
+  screenResidence: renderResidence,
+  screenSession: renderSession,
+  screenConducta: renderConducta,
+  screenExtra: renderExtra,
+  screenLectura: renderLectura,
+  screenPerfil: renderPerfil,
+  screenEvaluacion: renderEvaluacion,
+};
+
+function boot(){
+  normalize();
+  refreshDebugBar();
+  applyView();
+  const c = activeClient();
+  if(!c.onboarded) nav('screenOnboarding');
+  else goHome();
+}
+
+loadState();
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
