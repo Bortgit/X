@@ -217,7 +217,7 @@ img{max-width:100%;}
 .svc-item .p{font-weight:800;color:var(--accent-dark);}
 .daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:10px 0;}
 .daycell{
-  background:#fff;border:1.5px solid var(--accent-light);border-radius:10px;padding:6px 2px;text-align:center;
+  position:relative;background:#fff;border:1.5px solid var(--accent-light);border-radius:10px;padding:6px 2px;text-align:center;
   font-size:11px;cursor:pointer;font-weight:700;
 }
 .daycell.closed{background:#f1e3e3;color:#b98;text-decoration:line-through;cursor:not-allowed;opacity:.6;}
@@ -225,6 +225,8 @@ img{max-width:100%;}
 .daycell.selected{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
 .daycell .dow{display:block;font-size:9px;color:var(--text-soft);font-weight:600;}
 .daycell.selected .dow{color:#fce;}
+.daycell.has-booking::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent-dark);}
+.daycell.selected.has-booking::after{background:#fff;}
 .hour-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
 .hour-chip{
   padding:7px 10px;border-radius:20px;border:1.5px solid var(--accent-light);background:#fff;
@@ -270,9 +272,12 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 .stat-box .n{font-size:22px;font-weight:800;color:var(--accent-dark);}
 .stat-box .l{font-size:11.5px;color:var(--text-soft);}
 .admin-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto;}
-.admin-daycell{background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
+.admin-daycell{position:relative;background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
 .admin-daycell.closed{background:#f1e3e3;color:#a95;}
 .admin-daycell small{display:block;font-size:8px;font-weight:600;color:var(--text-soft);}
+.admin-daycell.has-booking{border-color:var(--accent);}
+.admin-daycell.selected{background:var(--accent);color:#fff;}
+.admin-daycell .badge-count{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;font-size:9px;border-radius:8px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px;font-weight:800;}
 .ad-daytoggle{cursor:pointer;padding:2px 0 4px;border-radius:5px;}
 .ad-daytoggle:hover{background:var(--accent-light);}
 .admin-hours{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;justify-content:center;}
@@ -376,6 +381,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <button class="tile" onclick="nav('screenPerfil')"><span class="ic">👤</span><span class="t">Mi perfil</span></button>
             <a class="tile" style="text-decoration:none;display:block;" id="whatsappTile" href="#" target="_blank" rel="noopener"><span class="ic">✉️</span><span class="t">WhatsApp</span></a>
           </div>
+          <button class="tile" style="width:100%;margin-top:8px;" onclick="nav('screenAgenda')"><span class="ic">🗓️</span><span class="t">Mi agenda</span></button>
         </div>
       </div>
 
@@ -383,6 +389,16 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenNotifications">
         <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Notificaciones</h2></div>
         <div class="screen-pad" id="notifList"></div>
+      </div>
+
+      <!-- ============ AGENDA (cliente) ============ -->
+      <div class="screen" id="screenAgenda">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Mi agenda</h2></div>
+        <div class="screen-pad">
+          <p class="card-sub">Los días con un punto tienen algo reservado. Toca un día para ver el detalle.</p>
+          <div class="daygrid" id="agendaDayGrid"></div>
+          <div id="agendaDayDetail"></div>
+        </div>
       </div>
 
       <!-- ============ XP SERVICES ============ -->
@@ -528,6 +544,13 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         <label>Aforo máximo diario residencia</label>
         <input type="number" id="adminCapacity" min="0" onchange="adminSetCapacity(this.value)">
       </div>
+    </div>
+
+    <div class="admin-section">
+      <h3>📅 Agenda de reservas</h3>
+      <p class="card-sub">Días con al menos una reserva de cualquier cliente (adiestramiento, videollamada o residencia). Haz clic en un día para ver el detalle.</p>
+      <div class="admin-daygrid" id="adminAgendaGrid"></div>
+      <div id="adminAgendaDetail"></div>
     </div>
 
     <div class="admin-section">
@@ -1072,6 +1095,84 @@ function payResidenceBooking(checkin, checkout, nights, total, discount){
   goHome();
 }
 
+/* ---------------- AGENDA (cliente + admin) ---------------- */
+function trainingBookingsOnDate(c, date){ return c.bookingsTraining.filter(b=>b.date===date); }
+function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
+function clientBookingsOnDate(c, date){
+  return [
+    ...trainingBookingsOnDate(c,date).map(b=>({kind:'training', b})),
+    ...residenceBookingsCoveringDate(c,date).map(b=>({kind:'residencia', b})),
+  ];
+}
+function allBookingsOnDate(date){
+  const items = [];
+  S.clients.forEach(cl=>{
+    trainingBookingsOnDate(cl,date).forEach(b=> items.push({client:cl, kind:'training', b}));
+    residenceBookingsCoveringDate(cl,date).forEach(b=> items.push({client:cl, kind:'residencia', b}));
+  });
+  return items;
+}
+function agendaItemLine(it){
+  if(it.kind==='training') return `🕒 ${it.b.hour} — ${escapeHtml(it.b.service)}`;
+  return `🏠 Residencia (${humanDate(it.b.checkin)} → ${humanDate(it.b.checkout)})`;
+}
+
+let agendaSelectedDate = null;
+function renderAgenda(){
+  const c = activeClient();
+  const grid = document.getElementById('agendaDayGrid');
+  let html='';
+  for(let i=0;i<30;i++){
+    const d = addDays(S.meta.simDate, i);
+    const has = clientBookingsOnDate(c,d).length>0;
+    html += `<div class="daycell ${has?'has-booking':''}" data-date="${d}" onclick="pickAgendaDay('${d}')">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+  }
+  grid.innerHTML = html;
+  pickAgendaDay(S.meta.simDate);
+}
+function pickAgendaDay(d){
+  agendaSelectedDate = d;
+  document.querySelectorAll('#agendaDayGrid .daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  const c = activeClient();
+  const items = clientBookingsOnDate(c, d);
+  const box = document.getElementById('agendaDayDetail');
+  if(!items.length){
+    box.innerHTML = `<div class="note-box" style="margin-top:12px;">Sin reservas para el ${humanDate(d)}.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="card" style="margin-top:12px;"><div class="card-title">${humanDate(d)}</div>${
+    items.map(it=>`<div class="card-sub">${agendaItemLine(it)}</div>`).join('')
+  }</div>`;
+}
+
+let adminAgendaSelectedDate = null;
+function renderAdminAgenda(){
+  const grid = document.getElementById('adminAgendaGrid');
+  let html='';
+  for(let i=0;i<28;i++){
+    const d = addDays(S.meta.simDate, i);
+    const items = allBookingsOnDate(d);
+    html += `<div class="admin-daycell ${items.length?'has-booking':''}" data-date="${d}" onclick="pickAdminAgendaDay('${d}')">
+      ${parseDate(d).getDate()}<small>${dowLabel(d)}</small>${items.length?`<span class="badge-count">${items.length}</span>`:''}
+    </div>`;
+  }
+  grid.innerHTML = html;
+  pickAdminAgendaDay(adminAgendaSelectedDate || S.meta.simDate);
+}
+function pickAdminAgendaDay(d){
+  adminAgendaSelectedDate = d;
+  document.querySelectorAll('#adminAgendaGrid .admin-daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  const items = allBookingsOnDate(d);
+  const box = document.getElementById('adminAgendaDetail');
+  if(!items.length){
+    box.innerHTML = `<div class="note-box" style="margin-top:10px;">Sin reservas para el ${humanDate(d)}.</div>`;
+    return;
+  }
+  box.innerHTML = `<div style="margin-top:10px;">${
+    items.map(it=>`<div class="client-card" style="cursor:default;"><div><div class="nm">${escapeHtml(it.client.name)} · 🐶 ${escapeHtml(it.client.dogName)}</div><div class="meta">${agendaItemLine(it)}</div></div></div>`).join('')
+  }</div>`;
+}
+
 /* ---------------- NOTIFICATIONS ---------------- */
 function renderNotifications(){
   const c = activeClient();
@@ -1255,6 +1356,7 @@ function renderAdmin(){
   document.getElementById('adminReadingInfo').textContent = `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`;
   document.getElementById('adminCapacity').value = S.admin.residenceCapacity;
   renderAdminCalendar();
+  renderAdminAgenda();
   renderAdminStats();
   renderAdminClients();
 }
@@ -1424,6 +1526,7 @@ function debugResetState(){
 /* ---------------- RENDERERS MAP + BOOT ---------------- */
 const RENDERERS = {
   screenHome: renderHome,
+  screenAgenda: renderAgenda,
   screenNotifications: renderNotifications,
   screenXpServices: renderXpServices,
   screenXpBooking: renderXpBooking,
