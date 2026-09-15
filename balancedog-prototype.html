@@ -566,6 +566,7 @@ const SERVICES = [
   {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento', price:80},
   {id:'diyg', name:'DIY grupal', info:'Mensual, clases en grupo', price:100},
   {id:'diyi', name:'DIY individual', info:'Mensual, clases individuales', price:150},
+  {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true},
 ];
 
 const BASICO_SESSIONS = [
@@ -998,7 +999,8 @@ function payTrainingBooking(){
     price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
     paid:true, createdSimDate:S.meta.simDate,
   });
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.`, read:false});
+  const waNote = selectedService.isVideocall ? ` Recibirás la videollamada por WhatsApp a esa hora.` : '';
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.${waNote}`, read:false});
   saveState();
   alert('¡Reserva confirmada y pagada (simulado)!');
   goHome();
