@@ -119,7 +119,7 @@ img{max-width:100%;}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:6px 0 10px;position:relative;
 }
-.mascot-stage{position:relative;width:210px;height:150px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
+.mascot-stage{position:relative;width:140px;height:100px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
 .mascot-anim{
   height:auto;display:block;transform-origin:bottom center;
   animation:squash 1.3s ease-in-out infinite;
@@ -133,7 +133,6 @@ img{max-width:100%;}
   80%{transform:scaleY(.97) scaleX(1.02);}
   100%{transform:scaleY(1) scaleX(1);}
 }
-.mascot-label{font-weight:700;color:var(--accent-dark);font-size:13.5px;margin-top:2px;letter-spacing:.2px;}
 
 /* ---------- cards ---------- */
 .card{
@@ -342,9 +341,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 
         <div class="mascot-wrap">
           <div class="mascot-stage">
-            <img class="mascot-anim" id="mascotImg" src="assets/mascota/contento.png" style="width:138px;" alt="Contento">
+            <img class="mascot-anim" id="mascotImg" src="assets/mascota/contento.png" style="width:92px;" alt="Tu perro" title="Contento">
           </div>
-          <div class="mascot-label" id="mascotLabel">Contento</div>
         </div>
 
         <div class="screen-pad" style="padding-top:0;">
@@ -624,13 +622,13 @@ const EVAL_OPTS = ['Nunca','A veces','Frecuentemente','Siempre'];
    cada uno lleva su propio ancho en px: así el perrito se ve siempre del mismo tamaño y solo
    cambia el "bounding box" según los objetos/iconos que le acompañen en ese estado. */
 const MASCOT_IMAGES = {
-  contento:  {src:'assets/mascota/contento.png',   w:138},
-  entrenando:{src:'assets/mascota/entrenando.png', w:132},
-  dormido:   {src:'assets/mascota/dormido.png',    w:132},
-  triste:    {src:'assets/mascota/triste.png',     w:120},
-  vacaciones:{src:'assets/mascota/vacaciones.png', w:183},
-  jugando:   {src:'assets/mascota/jugando.png',    w:146},
-  graduado:  {src:'assets/mascota/graduado.png',   w:110},
+  contento:  {src:'assets/mascota/contento.png',   w:92},
+  entrenando:{src:'assets/mascota/entrenando.png', w:88},
+  dormido:   {src:'assets/mascota/dormido.png',    w:88},
+  triste:    {src:'assets/mascota/triste.png',     w:80},
+  vacaciones:{src:'assets/mascota/vacaciones.png', w:122},
+  jugando:   {src:'assets/mascota/jugando.png',    w:97},
+  graduado:  {src:'assets/mascota/graduado.png',   w:73},
 };
 
 /* ---------------- date utils ---------------- */
@@ -781,8 +779,8 @@ function renderHome(){
   const mascotImg = document.getElementById('mascotImg');
   mascotImg.src = sprite.src;
   mascotImg.style.width = sprite.w + 'px';
-  mascotImg.alt = ps.label;
-  document.getElementById('mascotLabel').textContent = ps.label;
+  mascotImg.alt = 'Tu perro';
+  mascotImg.title = ps.label; // solo interno (tooltip al pasar el ratón / inspeccionar), el cliente no ve texto de estado en pantalla
 
   document.getElementById('xpMonthlyVal').textContent = c.xpMonthly + ' XP';
   document.getElementById('xpBankVal').textContent = c.xpBank + ' XP';
