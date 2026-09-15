@@ -389,7 +389,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <button class="tile" onclick="nav('screenLectura')"><span class="ic">📖</span><span class="t">Lectura</span></button>
             <button class="tile" onclick="nav('screenExtra')"><span class="ic">✨</span><span class="t">Contenido extra</span></button>
             <button class="tile" onclick="nav('screenPerfil')"><span class="ic">👤</span><span class="t">Mi perfil</span></button>
-            <a class="tile" style="text-decoration:none;display:block;" href="https://wa.me/34600111222?text=Hola%20BalanceDog!" target="_blank" rel="noopener"><span class="ic">✉️</span><span class="t">WhatsApp</span></a>
+            <a class="tile" style="text-decoration:none;display:block;" id="whatsappTile" href="#" target="_blank" rel="noopener"><span class="ic">✉️</span><span class="t">WhatsApp</span></a>
           </div>
         </div>
       </div>
@@ -498,8 +498,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           </div>
           <div class="card">
             <div class="card-title">Evaluación de conducta</div>
-            <div class="card-sub">Cuestionario de 48 preguntas (muestra reducida en este prototipo).</div>
-            <button class="btn btn-outline" onclick="nav('screenEvaluacion')">Realizar evaluación</button>
+            <div class="card-sub">Cuestionario de 48 preguntas (muestra reducida en este prototipo). Se realiza una única vez, al darte de alta.</div>
+            <button class="btn btn-outline" id="evalActionBtn" onclick="attemptEvaluacion()">Realizar evaluación</button>
             <hr class="sep">
             <div class="eval-hist" id="evalHistory"></div>
           </div>
@@ -571,8 +571,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
    ========================================================================= */
 
 const STORAGE_KEY = 'balancedog_state_v1';
-const XP_TO_EUR = 0.05; // 20 XP = 1€, tasa usada tanto para XP mensual como para la hucha
+const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
 const FIXED_HOURS = ['09:00','11:00','13:00','17:00','19:00'];
+const TRAINER_WHATSAPP_NUMBER = '34611222333'; // número del adiestrador/negocio, NUNCA el del cliente
 
 const SERVICES = [
   {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30},
@@ -655,7 +656,8 @@ function makeClient(over){
     lastTrainingSessionDate:'',
     xpMonthly:150, xpMonthlyMonth:'2026-09',
     xpBank:320,
-    lecturaClaimedMonth:'',
+    lecturaClaimedIds:[],
+    evalReenabled:false,
     courses:{
       basico:{unlocked:true, completed:false, currentSession:1, totalSessions:BASICO_SESSIONS.length},
       avanzado:{unlocked:false, completed:false, currentSession:1, totalSessions:AVANZADO_SESSIONS.length},
@@ -669,7 +671,7 @@ function makeClient(over){
     evaluations:[{date:'2026-08-26'}],
     notifications:[
       {id:'n1', date:'2026-09-15', title:'¡Nueva sesión disponible!', body:'Ya puedes completar tu próxima sesión de adiestramiento básico.', read:false},
-      {id:'n2', date:'2026-09-12', title:'Recordatorio: evaluación mensual', body:'No olvides completar tu evaluación de conducta desde tu perfil.', read:false},
+      {id:'n2', date:'2026-09-12', title:'Nueva sesión de conducta disponible', body:'Cuando termines el básico se desbloqueará la sección de conducta.', read:false},
       {id:'n3', date:'2026-09-08', title:'¡Has ganado 25 XP!', body:'Completaste una sesión de adiestramiento. Sigue así.', read:true},
       {id:'n4', date:'2026-08-30', title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. ¡Empecemos a entrenar!', read:true},
     ],
@@ -702,7 +704,7 @@ function makeDefaultState(){
   });
   return {
     meta:{ simDate, view:'client', calTab:'training' },
-    monthlyReading:{ title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
+    monthlyReading:{ id:'r1', title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
     admin:{ residenceCapacity:3, calendarClosures:{ training:{}, residencia:{} } },
     clients:[ makeClient({}), clientB, clientC ],
   };
@@ -782,6 +784,9 @@ function renderHome(){
   document.getElementById('xpBankVal').textContent = c.xpBank + ' XP';
 
   document.getElementById('courseRow').innerHTML = renderCourseTile('basico')+renderCourseTile('avanzado')+renderCourseTile('conducta');
+
+  const waText = encodeURIComponent(`Hola, soy ${c.name} (dueño/a de ${c.dogName}) y quería consultarte una cosa.`);
+  document.getElementById('whatsappTile').href = `https://wa.me/${TRAINER_WHATSAPP_NUMBER}?text=${waText}`;
 }
 function usedSessionToday(c){ return c.lastTrainingSessionDate === S.meta.simDate; }
 function renderCourseTile(key){
@@ -1095,10 +1100,15 @@ function renderExtra(){
 }
 
 /* ---------------- LECTURA ---------------- */
+function hasCompletedAllContent(c){
+  return c.courses.basico.completed && c.courses.avanzado.completed
+    && c.behaviorProblems.every(b=>b.status==='completed');
+}
 function renderLectura(){
   const c = activeClient();
   const r = S.monthlyReading;
-  const claimed = c.lecturaClaimedMonth === monthKey(S.meta.simDate);
+  const claimed = c.lecturaClaimedIds.includes(r.id);
+  const eligible = hasCompletedAllContent(c);
   let preview;
   if(r.dataUrl && r.mime && r.mime.startsWith('image/')){
     preview = `<img src="${r.dataUrl}" style="border-radius:14px;">`;
@@ -1107,20 +1117,28 @@ function renderLectura(){
   } else {
     preview = `<div class="placeholder-img"><span class="em">📄</span>Aquí se mostraría el PDF/imagen real de la lectura mensual</div>`;
   }
+  let action;
+  if(!eligible){
+    action = `<div class="note-box">Los 800 XP de esta lectura solo se otorgan a quienes ya han completado todo el contenido de la app (básico, avanzado y todos los problemas de conducta). Mientras tanto, sigue ganando 25 XP por sesión.</div>`;
+  } else if(claimed){
+    action = `<button class="btn" style="margin-top:14px;" disabled>Ya reclamada esta lectura ✅</button>`;
+  } else {
+    action = `<button class="btn" style="margin-top:14px;" onclick="claimReading()">Marcar como leída y reclamar 800 XP</button>`;
+  }
   document.getElementById('lecturaBody').innerHTML = `
     <div class="card">
       <div class="card-title">${escapeHtml(r.title)}</div>
       <div class="card-sub">Publicada el ${humanDate(r.uploadedDate)}</div>
     </div>
     ${preview}
-    <button class="btn" style="margin-top:14px;" ${claimed?'disabled':''} onclick="claimReading()">
-      ${claimed ? 'Ya reclamado este mes ✅' : 'Marcar como leída y reclamar 800 XP'}
-    </button>`;
+    ${action}`;
 }
 function claimReading(){
   const c = activeClient();
+  const r = S.monthlyReading;
+  if(!hasCompletedAllContent(c) || c.lecturaClaimedIds.includes(r.id)) return;
   c.xpBank += 800;
-  c.lecturaClaimedMonth = monthKey(S.meta.simDate);
+  c.lecturaClaimedIds.push(r.id);
   c._petTemp = {key:'graduado', consumed:false};
   saveState();
   alert('¡Has ganado 800 XP para tu hucha!');
@@ -1144,6 +1162,21 @@ function renderPerfil(){
   document.getElementById('evalHistory').innerHTML = c.evaluations.length
     ? 'Historial de evaluaciones:<br>' + c.evaluations.map(e=>humanDate(e.date)).join('<br>')
     : 'Sin evaluaciones previas.';
+  const canEval = canDoEvaluation(c);
+  const evalBtn = document.getElementById('evalActionBtn');
+  evalBtn.disabled = !canEval;
+  evalBtn.classList.toggle('btn-outline', canEval);
+  if(!canEval) evalBtn.textContent = 'Evaluación inicial ya completada';
+  else evalBtn.textContent = c.evaluations.length===0 ? 'Realizar evaluación inicial' : 'Realizar nueva evaluación (habilitada por tu adiestrador)';
+}
+function canDoEvaluation(c){ return c.evaluations.length===0 || c.evalReenabled; }
+function attemptEvaluacion(){
+  const c = activeClient();
+  if(!canDoEvaluation(c)){
+    alert('Ya completaste tu evaluación inicial. Si tu adiestrador necesita que la repitas, puede habilitarla de nuevo desde el panel de administrador.');
+    return;
+  }
+  nav('screenEvaluacion');
 }
 function saveProfile(){
   const c = activeClient();
@@ -1177,6 +1210,7 @@ function renderEvaluacion(){
 function submitEvaluation(){
   const c = activeClient();
   c.evaluations.push({date:S.meta.simDate});
+  c.evalReenabled = false;
   saveState();
   alert('Evaluación enviada. Gracias.');
   nav('screenPerfil');
@@ -1226,7 +1260,7 @@ function adminUploadReading(){
   if(!file){ alert('Selecciona un archivo primero.'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
-    S.monthlyReading = {title:'Lectura de '+humanDate(S.meta.simDate), uploadedDate:S.meta.simDate, dataUrl:e.target.result, mime:file.type};
+    S.monthlyReading = {id:'r'+Date.now(), title:'Lectura de '+humanDate(S.meta.simDate), uploadedDate:S.meta.simDate, dataUrl:e.target.result, mime:file.type};
     saveState();
     renderAdmin();
     alert('Lectura mensual actualizada.');
@@ -1322,13 +1356,20 @@ function openClientModal(id){
     <div class="kv"><span>Curso actual</span><span>${courseTxt}</span></div>
     <div class="kv"><span>Última sesión</span><span>${c.lastTrainingSessionDate ? humanDate(c.lastTrainingSessionDate) : '—'}</span></div>
     <div class="kv"><span>Estado de pago</span><span>${c.subscriptionStatus}</span></div>
-    <div class="kv"><span>Evaluaciones</span><span>${c.evaluations.length}</span></div>
+    <div class="kv"><span>Evaluaciones</span><span>${c.evaluations.length} ${c.evalReenabled?'(nueva evaluación habilitada)':''}</span></div>
     <h3 style="margin-top:14px;font-size:13px;">Historial de adiestramiento</h3>
     <p style="font-size:12px;">${trainingHist}</p>
     <h3 style="font-size:13px;">Historial de residencia</h3>
     <p style="font-size:12px;">${residHist}</p>
+    <button class="btn btn-sm" style="margin-top:10px;" ${(c.evaluations.length===0||c.evalReenabled)?'disabled':''} onclick="adminReenableEvaluation('${c.id}')">Habilitar nueva evaluación para este cliente</button>
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
+}
+function adminReenableEvaluation(id){
+  const c = S.clients.find(x=>x.id===id);
+  c.evalReenabled = true;
+  saveState();
+  openClientModal(id);
 }
 function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
 
