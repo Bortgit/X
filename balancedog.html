@@ -785,7 +785,7 @@ function renderHome(){
 
   document.getElementById('courseRow').innerHTML = renderCourseTile('basico')+renderCourseTile('avanzado')+renderCourseTile('conducta');
 
-  const waText = encodeURIComponent(`Hola, soy ${c.name} (dueño/a de ${c.dogName}) y quería consultarte una cosa.`);
+  const waText = encodeURIComponent(`Hola, soy ${c.name}. Tengo una consulta sobre ${c.dogName}.`);
   document.getElementById('whatsappTile').href = `https://wa.me/${TRAINER_WHATSAPP_NUMBER}?text=${waText}`;
 }
 function usedSessionToday(c){ return c.lastTrainingSessionDate === S.meta.simDate; }
