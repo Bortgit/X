@@ -1548,7 +1548,13 @@ function toggleView(){
 function applyView(){
   document.getElementById('clientAppWrap').classList.toggle('hidden', S.meta.view!=='client');
   document.getElementById('adminApp').classList.toggle('hidden', S.meta.view!=='admin');
-  if(S.meta.view==='admin') renderAdmin();
+  if(S.meta.view==='admin'){
+    renderAdmin();
+  } else {
+    // refresca la pantalla de cliente visible por si el admin cambió datos (p.ej. XP) mientras estaba en su panel
+    const activeScreen = document.querySelector('#phoneScreen .screen.active');
+    if(activeScreen && RENDERERS[activeScreen.id]) RENDERERS[activeScreen.id]();
+  }
 }
 function renderAdmin(){
   document.getElementById('adminDateLabel').textContent = humanDate(S.meta.simDate);
@@ -1680,8 +1686,64 @@ function openClientModal(id){
     <p style="font-size:12px;">${trainingHist}</p>
     <h3 style="font-size:13px;">Historial de residencia</h3>
     <p style="font-size:12px;">${residHist}</p>
+    <hr class="sep">
+    <h3 style="font-size:13px;">Ajustar XP manualmente</h3>
+    <p class="card-sub">Suma, resta o pon a 0 el XP de este cliente (por ejemplo, para corregir un fallo o regalar XP). El cliente recibe una notificación con el cambio.</p>
+    <div class="field">
+      <label>XP mensual actual: ${c.xpMonthly}</label>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="adjXpMonthlyInput" placeholder="p.ej. 200 o -50" style="flex:1;">
+        <button class="btn btn-sm" style="width:auto;padding:8px 12px;" onclick="adminAdjustXp('${c.id}','xpMonthly',document.getElementById('adjXpMonthlyInput').value)">Aplicar</button>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="adminZeroXp('${c.id}','xpMonthly')">Poner XP mensual a 0</button>
+    </div>
+    <div class="field">
+      <label>Hucha actual: ${c.xpBank}</label>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="adjXpBankInput" placeholder="p.ej. 200 o -50" style="flex:1;">
+        <button class="btn btn-sm" style="width:auto;padding:8px 12px;" onclick="adminAdjustXp('${c.id}','xpBank',document.getElementById('adjXpBankInput').value)">Aplicar</button>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="adminZeroXp('${c.id}','xpBank')">Poner hucha a 0</button>
+    </div>
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
+}
+function notifyXpAdjustment(c, field, delta){
+  if(!delta) return;
+  const label = field==='xpMonthly' ? 'XP mensual' : 'XP de la hucha';
+  let title, body;
+  if(delta>0){
+    title = '🎁 ¡Obsequio de tu adiestrador!';
+    body = `Te han añadido +${delta} XP (${label}). ¡Disfrútalo!`;
+  } else {
+    title = 'Ajuste de XP';
+    body = `Tu ${label} se ha ajustado en ${delta} XP por parte de tu adiestrador.`;
+  }
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title, body, read:false});
+}
+function adminAdjustXp(clientId, field, rawAmount){
+  const c = S.clients.find(x=>x.id===clientId);
+  const amount = parseInt(rawAmount, 10);
+  if(!amount || isNaN(amount)){ alert('Introduce una cantidad distinta de 0 (puede ser negativa).'); return; }
+  const before = c[field];
+  c[field] = Math.max(0, before + amount);
+  const actualDelta = c[field] - before;
+  saveState();
+  notifyXpAdjustment(c, field, actualDelta);
+  openClientModal(clientId);
+  renderAdminClients();
+  renderAdminStats();
+}
+function adminZeroXp(clientId, field){
+  const c = S.clients.find(x=>x.id===clientId);
+  if(c[field]===0) return;
+  const delta = -c[field];
+  c[field] = 0;
+  saveState();
+  notifyXpAdjustment(c, field, delta);
+  openClientModal(clientId);
+  renderAdminClients();
+  renderAdminStats();
 }
 function adminReenableEvaluation(clientId, dogId){
   const c = S.clients.find(x=>x.id===clientId);
