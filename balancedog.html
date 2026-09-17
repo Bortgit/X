@@ -570,6 +570,19 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
     </div>
 
     <div class="admin-section">
+      <h3>✨ Contenido extra</h3>
+      <p class="card-sub">Se muestra igual, para todos los clientes, en su sección "Contenido extra". Nunca otorga XP.</p>
+      <div id="adminExtraList"></div>
+      <button class="tab-btn" onclick="adminShowExtraForm()">+ Añadir contenido extra</button>
+      <div id="adminExtraForm" class="hidden" style="margin-top:10px;">
+        <div class="field"><label>Título</label><input id="adminExtraTitle" placeholder="Ej. Juegos de olfato en casa"></div>
+        <div class="field"><label>Descripción</label><textarea id="adminExtraDesc" placeholder="De qué trata este contenido..."></textarea></div>
+        <button class="btn btn-sm" style="width:auto;padding:8px 14px;" onclick="adminAddExtra()">Añadir</button>
+        <button class="btn btn-outline btn-sm" style="width:auto;padding:8px 14px;margin-left:6px;" onclick="adminHideExtraForm()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
       <h3>🗓️ Calendarios</h3>
       <div class="tabs">
         <button class="tab-btn active" id="tabTraining" onclick="adminSwitchCalTab('training')">Adiestramiento</button>
@@ -664,14 +677,6 @@ const BEHAVIOR_TEMPLATE = [
   {name:'Desensibilización — nivel 2', kind:'obediencia', desc:'Exposición controlada de intensidad media al estímulo.'},
   {name:'Sesión de juego de refuerzo', kind:'juego', desc:'Juego para reforzar la relajación, solo confirmación.'},
   {name:'Consolidación y repaso final', kind:'obediencia', desc:'Repaso general del proceso trabajado.'},
-];
-const EXTRA_CONTENT = [
-  {title:'Juegos de olfato en casa', emoji:'👃', desc:'Ejercicios sencillos de olfato para estimular a tu perro en casa, usando premios escondidos.'},
-  {title:'Cómo cepillar correctamente', emoji:'🪮', desc:'Guía paso a paso para un cepillado cómodo y sin estrés según el tipo de pelo.'},
-  {title:'Snacks saludables caseros', emoji:'🦴', desc:'Recetas sencillas de premios caseros aptos para el adiestramiento.'},
-  {title:'Socialización con otros perros', emoji:'🐕', desc:'Consejos para presentaciones seguras y positivas entre perros.'},
-  {title:'Rutina de paseo ideal', emoji:'🚶', desc:'Cómo estructurar el paseo diario para un equilibrio físico y mental óptimo.'},
-  {title:'Trucos divertidos: choca esos cinco', emoji:'🖐️', desc:'Aprende a enseñar un truco divertido paso a paso.'},
 ];
 const EVAL_QUESTIONS = [
   '¿Tu perro tira de la correa durante los paseos?',
@@ -807,6 +812,7 @@ function makeDefaultState(){
     monthlyReading:{ id:'r1', title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
     admin:{ residenceCapacity:3, calendarClosures:{ training:{}, residencia:{} } },
     clients:[ clientA, clientB, clientC ],
+    extraContent:[], // lo rellena el admin; vacío por defecto, nunca contenido de ejemplo
   };
 }
 
@@ -815,7 +821,11 @@ let S = null;
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){ S = JSON.parse(raw); return; }
+    if(raw){
+      S = JSON.parse(raw);
+      if(!S.extraContent) S.extraContent = []; // compatibilidad con estado guardado antes de esta función
+      return;
+    }
   }catch(e){ console.warn('Estado corrupto, reiniciando', e); }
   S = makeDefaultState();
   saveState();
@@ -1449,10 +1459,15 @@ function markRead(id){
 
 /* ---------------- CONTENIDO EXTRA ---------------- */
 function renderExtra(){
-  document.getElementById('extraList').innerHTML = EXTRA_CONTENT.map((e,i)=>`
+  const list = document.getElementById('extraList');
+  if(!S.extraContent.length){
+    list.innerHTML = `<div class="note-box">Todavía no hay contenido extra. Tu adiestrador irá añadiendo aquí guías, consejos y vídeos.</div>`;
+    return;
+  }
+  list.innerHTML = S.extraContent.map((e,i)=>`
     <div class="accordion-item" id="extra${i}">
       <div class="accordion-head" onclick="document.getElementById('extra${i}').classList.toggle('open')">
-        <span class="em">${e.emoji}</span><span class="t">${escapeHtml(e.title)}</span><span>▾</span>
+        <span class="em">${e.emoji||'✨'}</span><span class="t">${escapeHtml(e.title)}</span><span>▾</span>
       </div>
       <div class="accordion-body">
         <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo</div>
@@ -1660,6 +1675,7 @@ function renderAdmin(){
   const r = S.monthlyReading;
   document.getElementById('adminReadingInfo').textContent = `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`;
   document.getElementById('adminCapacity').value = S.admin.residenceCapacity;
+  renderAdminExtra();
   renderAdminCalendar();
   renderAdminAgenda();
   renderAdminStats();
@@ -1677,6 +1693,40 @@ function adminUploadReading(){
     alert('Lectura mensual actualizada.');
   };
   reader.readAsDataURL(file);
+}
+function renderAdminExtra(){
+  document.getElementById('adminExtraList').innerHTML = S.extraContent.length
+    ? S.extraContent.map((e,i)=>`
+        <div class="client-card" style="cursor:default;">
+          <div><div class="nm">${escapeHtml(e.title)}</div><div class="meta">${escapeHtml(e.desc)}</div></div>
+          <button class="btn btn-danger btn-sm" style="width:auto;padding:6px 10px;" onclick="adminDeleteExtra(${i})">Eliminar</button>
+        </div>`).join('')
+    : `<p class="card-sub">Todavía no has añadido ningún contenido extra.</p>`;
+}
+function adminShowExtraForm(){
+  document.getElementById('adminExtraForm').classList.remove('hidden');
+  document.getElementById('adminExtraTitle').value = '';
+  document.getElementById('adminExtraDesc').value = '';
+  document.getElementById('adminExtraTitle').focus();
+}
+function adminHideExtraForm(){
+  document.getElementById('adminExtraForm').classList.add('hidden');
+}
+function adminAddExtra(){
+  const title = document.getElementById('adminExtraTitle').value.trim();
+  const desc = document.getElementById('adminExtraDesc').value.trim();
+  if(!title || !desc){ alert('Escribe un título y una descripción.'); return; }
+  S.extraContent.push({id:'ex'+Date.now(), title, desc, emoji:'✨'});
+  saveState();
+  adminHideExtraForm();
+  renderAdminExtra();
+  alert('Contenido extra añadido. Ya está visible para todos los clientes.');
+}
+function adminDeleteExtra(i){
+  if(!confirm('¿Eliminar este contenido extra? Desaparecerá para todos los clientes.')) return;
+  S.extraContent.splice(i,1);
+  saveState();
+  renderAdminExtra();
 }
 function adminSwitchCalTab(tab){
   S.meta.calTab = tab; saveState();
