@@ -53,8 +53,11 @@ class Settings:
     # Base de datos
     db_path: str = os.getenv("DB_PATH", "blackstories.db")
 
-    # Modelo / proveedor de IA
-    model_provider: str = os.getenv("MODEL_PROVIDER", "none").strip().lower()
+    # Modelo / proveedor de IA. Por defecto "ollama": el juego funciona al
+    # 100% en local, sin ninguna llamada a un servicio de pago ni consumo
+    # de tokens, sin tener que tocar .env. Pon "claude" solo si tu mismo
+    # decides usar la API de Claude, y "none" para desactivar la IA.
+    model_provider: str = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
     ollama_host: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")

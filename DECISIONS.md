@@ -105,12 +105,25 @@ Actué con criterio y seguí adelante, tal y como se me pidió.
 
 ## Modelo de IA
 
-- Con `MODEL_PROVIDER=none` (valor por defecto de `.env.example`), el
-  bot funciona igualmente para los interceptores de código (bienvenida,
+- **El valor por defecto de `MODEL_PROVIDER` es `ollama`, no `none`.**
+  Al principio lo dejé en `none` para no asumir nada por el usuario, pero
+  el usuario aclaró expresamente que el juego tiene que poder jugarse al
+  100% con Ollama sin que él tenga que tocar `.env` ni configurar nada, y
+  sin ningún consumo de tokens de pago. Corregí el valor por defecto
+  directamente en `core/config.py` (no solo en `.env.example`), así que
+  aunque no exista ningún archivo `.env`, el bot ya intenta usar Ollama
+  en local. `claude` sigue disponible como opción, pero nunca se activa
+  sola: solo si el usuario cambia esa variable él mismo.
+- `tests/run_battery.py` hace ahora una comprobación previa de
+  conectividad con el modelo (clasifica el primer caso antes del resto):
+  si Ollama no está arrancado, avisa una vez con un mensaje claro
+  ("Comprueba que Ollama está instalado y arrancado...") en vez de
+  repetir el mismo error de conexión en cada uno de los ~20 casos.
+- Con `MODEL_PROVIDER=none` (solo si el usuario lo pone explícitamente),
+  el bot sigue funcionando para los interceptores de código (bienvenida,
   ayuda, solución, me rindo), pero cualquier pregunta real devuelve el
   mensaje de "fallo técnico", porque no hay ningún modelo que la
-  clasifique. Esto permite instalar y probar el proyecto sin credenciales
-  de ningún proveedor de IA antes de decidir cuál usar.
+  clasifique.
 
 ## Canal de Instagram
 

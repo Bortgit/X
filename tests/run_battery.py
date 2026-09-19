@@ -128,6 +128,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     cases = load_cases(cases_path)
+    if not cases:
+        print("Sin casos que evaluar.")
+        return 0
+
+    # Comprobacion previa de conectividad: si el proveedor configurado no
+    # responde (p.ej. Ollama no esta arrancado), avisa una vez con un
+    # mensaje claro en vez de repetir el mismo error en los 20 casos.
+    try:
+        model.classify_question(cases[0]["text"], story_text)
+    except ModelError as exc:
+        print(f"NO SE PUDO CONECTAR CON EL MODELO ({settings.model_provider}): {exc}")
+        if settings.model_provider == "ollama":
+            print(
+                "Comprueba que Ollama esta instalado y arrancado (ollama serve) "
+                f"y que el modelo esta descargado (ollama pull {settings.ollama_model})."
+            )
+        return 0
+
     result = run_battery(story_text, cases, model)
 
     print(f"Historia: {story_path}")

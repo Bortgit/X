@@ -29,11 +29,27 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Edita `.env` con un editor de texto y ajusta lo que necesites (ver
-secciones siguientes). Los valores por defecto ya funcionan para jugar en
-terminal sin ninguna IA configurada (modo `MODEL_PROVIDER=none`, que da
-un mensaje de "fallo técnico" en vez de clasificar preguntas: para jugar
-de verdad hace falta configurar un modelo, ver más abajo).
+**No hace falta tocar `.env` para nada.** Por defecto el bot ya está
+configurado para usar **Ollama en local**: cero consumo de tokens de
+pago, cero configuración. Lo único que necesitas es tener
+[Ollama](https://ollama.com/) instalado en tu PC:
+
+```
+ollama pull llama3.1
+ollama serve
+```
+
+(en Windows, tras instalar Ollama, el servicio ya queda arrancado solo;
+solo te falta descargar el modelo con `ollama pull llama3.1` una vez).
+Con eso, `python cli.py play` ya juega de verdad, sin editar nada.
+
+Copia `.env.example` a `.env` únicamente si quieres cambiar algo (otro
+modelo de Ollama, la API de Claude, límites, credenciales de Instagram,
+etc.):
+
+```
+copy .env.example .env
+```
 
 ## Uso en terminal
 
@@ -82,20 +98,23 @@ solo la primera vez.
 
 ## Cómo cambiar de modelo de IA
 
-En `.env`, variable `MODEL_PROVIDER`:
+En `.env`, variable `MODEL_PROVIDER` (si no existe el archivo `.env`, se
+usa el valor por defecto igualmente, sin que tengas que crear nada):
 
-- `none` (por defecto): no hay IA configurada. El bot intercepta
-  `ayuda`/`solución`/`me rindo`/bienvenida sin IA, pero cualquier
-  pregunta real devuelve el mensaje de "fallo técnico" porque no hay
-  modelo que la clasifique.
-- `ollama`: usa un modelo local vía [Ollama](https://ollama.com/).
-  Configura `OLLAMA_HOST` (por defecto `http://localhost:11434`) y
-  `OLLAMA_MODEL` (por defecto `llama3.1`). Requiere Ollama instalado y
-  el modelo descargado (`ollama pull llama3.1`) y con el servidor
-  corriendo (`ollama serve`, o ya corre solo en Windows tras instalarlo).
-- `claude`: usa la API de Anthropic. Configura `ANTHROPIC_API_KEY` y
-  `ANTHROPIC_MODEL` (por defecto un modelo pequeño tipo Haiku,
-  `claude-haiku-4-5`).
+- `ollama` (**por defecto**, sin tocar nada): usa un modelo local vía
+  [Ollama](https://ollama.com/). Cero coste, cero tokens de pago, todo
+  corre en tu PC. Configurable con `OLLAMA_HOST` (por defecto
+  `http://localhost:11434`) y `OLLAMA_MODEL` (por defecto `llama3.1`).
+  Requiere Ollama instalado, el modelo descargado (`ollama pull
+  llama3.1`) y el servidor corriendo (`ollama serve`, o ya corre solo en
+  Windows tras instalarlo).
+- `claude`: usa la API de pago de Anthropic. Solo se activa si tú mismo
+  cambias `MODEL_PROVIDER=claude` en `.env` y rellenas
+  `ANTHROPIC_API_KEY`. Por defecto (`claude-haiku-4-5`) si decides
+  usarla.
+- `none`: desactiva la IA por completo (el bot solo responde a
+  `ayuda`/`solución`/`me rindo`/bienvenida; cualquier pregunta real da
+  el mensaje de "fallo técnico").
 
 En ambos casos, la salida del modelo está **forzada** a una categoría
 exacta (esquema JSON con enum en Ollama, tool use obligatorio con enum en
