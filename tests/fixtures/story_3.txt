@@ -1,0 +1,7 @@
+[BORRADOR DE PRUEBA - historia original creada solo para tests, no usar en blackstorie.txt real]
+
+ENIGMA: Un niño recibe el mismo regalo, sin abrir, dos años seguidos por su cumpleaños. El tercer año, llora al verlo, antes incluso de abrirlo. ¿Por qué?
+
+SOLUCION: El regalo es un mensaje grabado en video que su padre dejó preparado antes de morir, con instrucciones para que se lo entregaran sin abrir en cada cumpleaños hasta que el niño tuviera edad de entenderlo. El padre murió cuando el niño era muy pequeño. Los dos primeros años, sus familiares le entregaron el regalo, pero él no llegó siquiera a abrirlo porque era demasiado pequeño para interesarse. El tercer año, ya algo mayor, reconoció la letra de su padre escrita en la etiqueta del paquete y comprendió de quién era el mensaje. Lloró de emoción, no de miedo ni de decepción, antes de abrir el regalo.
+
+ACLARACIONES: El padre no está presente porque murió antes de que el niño tuviera edad de recordarlo. El llanto es de emoción al reconocer la letra de su padre, nunca de miedo ni de que el regalo estuviera roto o no le gustara. En el momento de llorar, el niño todavía no ha abierto el regalo. El color del papel de regalo no es relevante.

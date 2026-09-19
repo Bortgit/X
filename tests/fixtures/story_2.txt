@@ -1,0 +1,7 @@
+[BORRADOR DE PRUEBA - historia original creada solo para tests, no usar en blackstorie.txt real]
+
+ENIGMA: Una mujer envía un correo urgente a su jefe cada noche a las 22:00, durante diez años, sin faltar ni un solo día. Una noche no lo envía. A la mañana siguiente la encuentran con vida y en perfecto estado de salud, pero la empresa la despide de inmediato. ¿Qué pasó?
+
+SOLUCION: Durante diez años la mujer fingió trabajar a distancia desde otro país, cuando en realidad vivía en la misma ciudad que su jefe. Usaba un programa automático que enviaba el correo cada noche a las 22:00 para simular que seguía conectada desde el extranjero, y con esa mentira cobraba dietas de desplazamiento y complementos que no le correspondían. Esa noche hubo un corte de luz en su domicilio que desactivó el programa automático, y el correo no llegó a enviarse. Al investigar por qué había fallado el envío, la empresa descubrió todo el fraude y la despidió de inmediato. Ella nunca estuvo en peligro: su salud no tuvo nada que ver.
+
+ACLARACIONES: Actuaba completamente sola, sin cómplices. El corte de luz es la causa técnica del fallo en el envío y es un hecho relevante. El despido se debe al fraude descubierto durante la investigación, no al simple hecho de que faltara un correo. El color de su ropa o sus gustos personales no son relevantes.
