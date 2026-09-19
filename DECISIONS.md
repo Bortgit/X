@@ -4,6 +4,27 @@ Este documento recoge las decisiones de diseño que tomé por mi cuenta
 porque las instrucciones no las cerraban del todo, junto con el motivo.
 Actué con criterio y seguí adelante, tal y como se me pidió.
 
+## Instalación de Ollama: límite real, no falta de esfuerzo
+
+- Se me pidió instalar y configurar Ollama por el usuario, "tú tienes que
+  hacerlo". Lo intenté en este entorno (el contenedor donde corre esta
+  sesión) y el proxy de red de la sesión rechaza explícitamente
+  `ollama.com` y `github.com` (política de la organización, código 403
+  en el `CONNECT`), así que ni siquiera pude instalar Ollama *aquí* para
+  hacer una demo en vivo con un servidor real. Más importante todavía:
+  esta sesión corre en un contenedor en la nube sin ningún acceso al PC
+  Windows del usuario, así que no hay ningún mecanismo técnico por el
+  que yo pueda instalar software en su máquina, con o sin restricciones
+  de red — es una limitación de arquitectura, no de permisos que se
+  puedan levantar.
+- Decisión: en vez de insistir o fingir que lo hice, dejé
+  `scripts/instalar_ollama_windows.bat` +
+  `scripts/instalar_ollama_windows.ps1`, pensados para reducir la parte
+  del usuario a un solo doble-clic (descargan el instalador oficial de
+  Ollama, lo instalan en modo silencioso sin ventanas que cerrar, y
+  descargan el modelo `llama3.1`). Es lo más cerca de "hazlo tú" que
+  puedo llegar sin acceso directo a su equipo.
+
 ## Entorno de trabajo
 
 - La sesión de Claude Code en la que se construyó este proyecto se

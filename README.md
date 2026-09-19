@@ -20,28 +20,37 @@ respuesta automática.
 
 ## Instalación
 
+### Paso 1: instalar Ollama (un solo doble-clic)
+
+El bot usa Ollama en local por defecto: cero coste, cero tokens de pago,
+cero configuración. Como no puedo instalar nada en tu PC desde esta
+sesión (no tengo ningún acceso a tu ordenador), te dejo un script que lo
+hace todo por ti con un solo doble-clic:
+
+1. Abre la carpeta `scripts/` dentro de `blackstories-bot`.
+2. Haz doble clic en **`instalar_ollama_windows.bat`**.
+3. Espera a que termine (descarga Ollama, lo instala en silencio y
+   descarga el modelo `llama3.1`; puede tardar varios minutos, son
+   varios GB). Al final verás "Listo." en verde.
+
+Si prefieres hacerlo tú mismo paso a paso, o el script falla por algún
+motivo (por ejemplo, sin conexión a internet), la alternativa manual es:
+instalar Ollama desde https://ollama.com/download y luego, en una
+terminal, ejecutar `ollama pull llama3.1`.
+
+### Paso 2: instalar el proyecto
+
 Desde la carpeta del proyecto (`blackstories-bot`), en PowerShell o CMD:
 
 ```
 py -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env
 ```
 
-**No hace falta tocar `.env` para nada.** Por defecto el bot ya está
-configurado para usar **Ollama en local**: cero consumo de tokens de
-pago, cero configuración. Lo único que necesitas es tener
-[Ollama](https://ollama.com/) instalado en tu PC:
-
-```
-ollama pull llama3.1
-ollama serve
-```
-
-(en Windows, tras instalar Ollama, el servicio ya queda arrancado solo;
-solo te falta descargar el modelo con `ollama pull llama3.1` una vez).
-Con eso, `python cli.py play` ya juega de verdad, sin editar nada.
+**No hace falta tocar `.env` para nada** (el bot ya usa Ollama por
+defecto sin configuración). Con eso, `python cli.py play` ya juega de
+verdad.
 
 Copia `.env.example` a `.env` únicamente si quieres cambiar algo (otro
 modelo de Ollama, la API de Claude, límites, credenciales de Instagram,
