@@ -58,6 +58,20 @@ código).
    mensajes contigo mismo y con usuarios que añadas como "testers" de la
    app, sin pasar aún por la revisión de Meta.
 
+**Nota importante**: Meta expone una única API de mensajería ("Send
+API") tanto para responder como para iniciar una conversación, así que
+el permiso `instagram_business_manage_messages` es el mismo en ambos
+casos. Pero este bot **nunca inicia conversaciones**: solo llama a esa
+API justo después de recibir un mensaje del jugador
+(`channels/instagram.py::send_message`, invocada únicamente dentro del
+webhook de mensajes entrantes). Al ser 100% reactivo, siempre responde
+dentro de la ventana de 24 horas desde el último mensaje del usuario, así
+que no necesitas ninguna etiqueta especial de mensaje "fuera de ventana"
+(esas son solo para quien envía mensajes sin que el usuario haya escrito
+antes, como marketing o recordatorios). Esto también simplifica la
+revisión de Meta: no es una herramienta de difusión, es un bot de
+respuesta a mensajes recibidos.
+
 ## 4. Túnel o servidor para el webhook
 
 Meta necesita una URL **HTTPS pública** para mandar los eventos de
@@ -114,14 +128,17 @@ mensajería.
 
 ## 8. Vídeo y envío a revisión de Meta
 
-Para pasar de modo desarrollo a que cualquier persona pueda escribirte:
+Para pasar de modo desarrollo a que cualquiera pueda escribirte y reciba
+respuesta (el bot solo responde a quien te escribe primero, nunca
+escribe él primero a nadie):
 
 1. Graba un vídeo de pantalla mostrando el flujo completo: un usuario
    escribiendo "reto ..." por Instagram y el bot respondiendo.
 2. En el panel de la app, ve a **App Review** y solicita el permiso
    `instagram_business_manage_messages` (Advanced Access), adjuntando el
    vídeo, el enlace a tu política de privacidad y una descripción clara
-   de para qué usas la mensajería (el juego de Black Stories).
+   de para qué usas la mensajería (el juego de Black Stories, solo en
+   modo respuesta, nunca envíos no solicitados).
 3. Espera la revisión de Meta (puede tardar varios días).
 
 ## 9. Beta cerrada con 5-10 testers
