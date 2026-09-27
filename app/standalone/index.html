@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#12161B">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="apple-touch-icon.png">
 <style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}</style>
 <title>Bilbo Coach</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -238,7 +238,7 @@ function planDouble(ex){
   if(mn<E.min){
     const prevSid=[...new Set(all.map(s=>s.sid))].slice(-2,-1)[0];
     const prev=prevSid?all.filter(s=>s.sid===prevSid&&s.w===w):[];
-    if(prev.length&&Math.min(...prev.map(s=>s.r))<E.min)return {w:r2(Math.max(0,w-inc)),status:"down",target:`${E.sets}×${E.min}+`,why:`Dos sesiones seguidas por debajo de ${E.min} reps con ${w} kg → −${inc} kg.`};
+    if(prev.length&&Math.min(...prev.map(s=>s.r))<E.min)return {w:r2(Math.max(0,w-inc)),status:"down",target:`${E.sets}×${E.min}+`,why:`Dos sesiones seguidas por debajo de ${E.min} reps con ${w} kg → -${inc} kg.`};
     return {w,status:"below",target:`Llegar a ${E.sets}×${E.min}`,why:`${reps.join("/")} queda por debajo del rango: se mantiene la carga y se analiza la fatiga.`};
   }
   return {w,status:"hold",target:`Superar ${reps.join("/")} (+1 rep, tope ${E.sets}×${E.max})`,why:`Doble progresión: misma carga hasta ${E.sets}×${E.max}.`};
@@ -586,7 +586,7 @@ document.addEventListener("click",async e=>{
       render();toast("Sesión eliminada.");}
     else{t.dataset.armed="1";t.textContent="¿Seguro? Toca otra vez";t.classList.add("danger");setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent="Eliminar";t.classList.remove("danger")}},4000)}
     return}
-  if(t.id==="exp-csv"){download(`historial-bilbo-${todayISO()}.csv`,"﻿"+csv());return}
+  if(t.id==="exp-csv"){download(`historial-bilbo-${todayISO()}.csv`,"\ufeff"+csv());return}
   if(t.id==="exp-json"){download(`copia-bilbo-${todayISO()}.json`,JSON.stringify({version:1,exported:new Date().toISOString(),cfg,sessions:sessions.map(({pending,...s})=>s)},null,1));return}
 });
 document.addEventListener("input",e=>{

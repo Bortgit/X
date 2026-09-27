@@ -72,7 +72,7 @@ head = '''<!doctype html>
 <meta name="theme-color" content="#12161B">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="apple-touch-icon.png">
 <style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}</style>
 '''
 body = s
@@ -92,9 +92,7 @@ open(os.path.join(OUT, "manifest.webmanifest"), "w", encoding="utf-8").write('''
   "background_color": "#0D1014",
   "theme_color": "#12161B",
   "icons": [
-    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {"src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png"}
   ]
 }
 ''')
@@ -102,7 +100,7 @@ open(os.path.join(OUT, "manifest.webmanifest"), "w", encoding="utf-8").write('''
 # ---------------- service worker (sin conexión; la versión nueva llega al abrir la app)
 ver = hashlib.sha1(html.encode()).hexdigest()[:10]
 open(os.path.join(OUT, "sw.js"), "w", encoding="utf-8").write('''const V="bilbo-%s";
-const SHELL=["./","./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png","./apple-touch-icon.png"];
+const SHELL=["./","./index.html","./manifest.webmanifest","./apple-touch-icon.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
@@ -139,7 +137,5 @@ def png(path, n):
     open(os.path.join(OUT, path), "wb").write(data)
 
 
-png("icon-192.png", 192)
-png("icon-512.png", 512)
 png("apple-touch-icon.png", 180)
 print("OK ->", OUT, "versión", ver)

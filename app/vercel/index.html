@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bilbo">
+<meta name="theme-color" content="#12161B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Bilbo Coach</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0D1014;color:#E8ECF1;font:16px system-ui,-apple-system,sans-serif;text-align:center;padding:24px}</style>
+</head>
+<body>
+<p id="m">Cargando Bilbo Coach…</p>
+<script>
+(async function(){
+  var KEY="bilbo.appcode",SRC="https://raw.githubusercontent.com/Bortgit/X/claude/bold-davinci-3r1eph/app/standalone/index.html";
+  function get(){try{return localStorage.getItem(KEY)}catch(e){return null}}
+  async function load(){
+    var r=await fetch(SRC+"?v="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("http "+r.status);
+    var t=await r.text();
+    if(t.indexOf("<title>Bilbo Coach</title>")<0)throw new Error("contenido no válido");
+    try{localStorage.setItem(KEY,t)}catch(e){}
+    return t;
+  }
+  var code=get();
+  if(!code){
+    try{code=await load()}catch(e){document.getElementById("m").textContent="No se pudo cargar la app. La primera vez necesita conexión a internet.";return}
+  }else{
+    load().catch(function(){});
+  }
+  document.open();document.write(code);document.close();
+})();
+</script>
+</body>
+</html>
