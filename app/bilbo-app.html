@@ -50,15 +50,24 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .warm{font-size:14px;margin-top:8px;padding:6px 10px;background:var(--surface2);border-radius:8px}
 .sub{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .sets{display:grid;gap:8px;margin-top:10px}
-.setrow{display:grid;grid-template-columns:28px 1fr 1fr auto;gap:8px;align-items:center}
+.setrow{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(0,1fr);gap:6px 8px;align-items:center}
+.setrow .seg{grid-column:2/4}
+.setrow + .setrow{padding-top:8px;border-top:1px solid var(--line)}
+.setrow.sethead{padding:0;border:0}
+.setrow.sethead + .setrow{padding-top:0;border-top:0}
+.sethead .label{font-size:11px}
 .setrow .n{font:700 16px var(--display);color:var(--muted);text-align:center}
-.field{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:0 10px;min-height:44px}
-.field input{border:0;background:transparent;color:var(--ink);font:600 20px var(--display);width:100%;min-width:0;padding:8px 0;font-variant-numeric:tabular-nums}
+.field{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:0 10px;min-height:48px;min-width:0}
+.field .fl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:0}
+.field input{border:0;background:transparent;color:var(--ink);font:600 22px var(--display);flex:1 1 auto;width:100%;min-width:2.5em;padding:8px 0;font-variant-numeric:tabular-nums}
+.field input::placeholder{color:var(--muted);opacity:.6}
 .field input:focus{outline:none}
 .field:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
-.field span{font-size:13px;color:var(--muted);margin-left:4px;white-space:nowrap}
-.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{border:0;background:var(--surface2);color:var(--ink);font:600 15px var(--display);padding:0 10px;min-height:44px;min-width:38px;cursor:pointer}
+.field span{font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
+.seg{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}
+.seg .sl{display:flex;align-items:center;padding:0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface);border-right:1px solid var(--line)}
+.seg button{flex:1;border:0;border-left:1px solid var(--line);background:var(--surface2);color:var(--ink);font:600 17px var(--display);padding:0 6px;min-height:40px;cursor:pointer}
+.seg .sl + button{border-left:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 14px;font:600 16px var(--body);cursor:pointer;min-height:44px}
@@ -88,7 +97,10 @@ details{border-top:1px solid var(--line);padding-block:10px}
 details summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:10px}
 details summary::-webkit-details-marker{display:none}
 .formgrid{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center}
-.formgrid .field{min-height:40px;width:120px}
+.formgrid .field{min-height:44px;width:130px}
+.edit{display:grid;gap:8px;margin-top:10px}
+.edit .setrow{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)}
+.edit .ex{font-size:14px;font-weight:600}
 select{font:600 16px var(--body);background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:44px;max-width:100%}
 textarea{width:100%;font:16px var(--body);background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:70px}
 .empty{padding:18px;text-align:center;color:var(--muted)}
@@ -137,7 +149,7 @@ const DEFAULT_CFG={bar:10,inc:2,mode:"near",pinit:0.15,pstep:0.025,fin:15,vertic
 
 /* ======================= ESTADO Y ALMACENAMIENTO ======================= */
 let cfg=structuredClone(DEFAULT_CFG), sessions=[], db=null, dl=null, dbState="conectando";
-let tab="hoy", day=null, draft={}, renderPending=false;
+let tab="hoy", day=null, draft={}, renderPending=false, editBuf=null;
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 cfg=Object.assign(structuredClone(DEFAULT_CFG),LS.get("bilbo.cfg",{}));
 sessions=LS.get("bilbo.sessions",[]);
@@ -244,12 +256,16 @@ const STATUS={calib:["CALIBRAR","warn"],new:["NUEVO CICLO","ok"],prog:["EN PROGR
   up:["SUBIR CARGA","ok"],hold:["MANTENER","" ],below:["POR DEBAJO DEL RANGO","warn"],down:["BAJAR","bad"],stack:["PILA AL MÁXIMO","bad"]};
 const tagOf=s=>{const [t,c]=STATUS[s]||[s,""];return `<span class="tag ${c}">${t}</span>`};
 
-function numField(key,field,val,suffix,ph){
-  return `<label class="field"><input inputmode="decimal" id="${esc(key+"-"+field)}" data-k="${esc(key)}" data-f="${field}" value="${esc(val??"")}" placeholder="${esc(ph??"")}" aria-label="${field}"><span>${suffix}</span></label>`;
+const FL={w:"Peso",r:"Reps"};
+function numField(key,field,val,suffix,ph,attr="data-k"){
+  return `<label class="field">${attr==="data-k"?"":`<span class="fl">${FL[field]||""}</span>`}<input type="text" inputmode="decimal" autocomplete="off" id="${esc(key+"-"+field)}" ${attr}="${esc(key)}" data-f="${field}" value="${esc(val??"")}" placeholder="${esc(ph??"")}" aria-label="${FL[field]||field}">${suffix&&attr!=="data-k"?`<span>${suffix}</span>`:""}</label>`;
 }
-function segField(key,field,opts,val){
-  return `<div class="seg" role="group" aria-label="${field}">${opts.map(o=>`<button type="button" data-seg="${esc(key)}" data-f="${field}" data-v="${o}" aria-pressed="${String(val)===String(o)}">${o}</button>`).join("")}</div>`;
+function segField(key,field,opts,val,attr="data-seg"){
+  const lab=field==="rir"?"RIR":"Velocidad";
+  return `<div class="seg" role="group" aria-label="${lab}"><span class="sl">${lab}</span>${opts.map(o=>`<button type="button" ${attr}="${esc(key)}" data-f="${field}" data-v="${o}" aria-pressed="${String(val)===String(o)}">${o}</button>`).join("")}</div>`;
 }
+function setHead(u){return `<div class="setrow sethead"><span></span><span class="label">Peso (${u})</span><span class="label">Reps</span></div>`}
+const bigW=(w,u)=>w==null?`<span style="font-size:24px">Elige la carga</span>`:`${w}<small>${u}</small>`;
 function restBtn(t){return `<button type="button" class="btn small" data-rest="${t}">Descanso ${t}</button>`}
 
 /* ======================= PANTALLA HOY ======================= */
@@ -269,34 +285,34 @@ function renderHoy(){
 function cardBilbo(ex,n){
   const b=planBilbo(ex),bw=+dv(ex+"|b","w",b.w??"")||b.w,p=planPost(ex,bw),u=unit(ex);
   let h=`<section class="card bilbo"><div class="cardhead"><div><div class="label">${n} · Bilbo · ciclo ${b.cycle} · sesión ${b.cs}</div><h3>${ex}</h3></div>${tagOf(b.status)}</div>`;
-  h+=`<div class="presc"><div class="big">${b.w??"—"}<small>${u}</small></div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:"30–40"}</div></div></div>`;
+  h+=`<div class="presc"><div class="big">${bigW(b.w,u)}</div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:"30–40"}</div></div></div>`;
   h+=`<div class="why">${esc(b.why)} ${perSide(ex,b.w)?"· "+perSide(ex,b.w):""}</div>`;
   const wu=warmups(ex,b.w);h+=`<div class="warm"><b>Aproximación:</b> ${wu?wu:"2 series progresivas ligeras (×8 y ×5)"}</div>`;
-  h+=`<div class="sets"><div class="setrow"><div class="n">B</div>${numField(ex+"|b","w",dv(ex+"|b","w",b.w??""),u,"peso")}${numField(ex+"|b","r",dv(ex+"|b","r",""),"reps",b.exp?"≈"+b.exp:"reps")}<span></span></div></div>`;
-  h+=`<div class="small muted" style="margin-top:6px">Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
-  h+=`<div class="sub"><div class="cardhead"><div><div class="label">Post-Bilbo · 3×8–12 @RIR 1</div><div class="big" style="font-size:32px">${p.w??"—"}<small>${u}</small></div></div><span class="tag">+${Math.round(p.pct*1000)/10}%</span></div>`;
-  h+=`<div class="why">${esc(p.ev)} ${p.w?"Peso = Bilbo × "+(1+p.pct).toFixed(3).replace(/0+$/,"")+" redondeado.":"Se calcula al poner el peso Bilbo."} ${perSide(ex,p.w)?"· "+perSide(ex,p.w):""}</div><div class="sets">`;
-  for(let s=1;s<=3;s++){const k=ex+"|p"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"reps","8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
+  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(ex+"|b","w",dv(ex+"|b","w",b.w??""),u,"peso")}${numField(ex+"|b","r",dv(ex+"|b","r",""),"",b.exp?"≈"+b.exp:"")}</div></div>`;
+  h+=`<div class="small muted" style="margin-top:6px">Las cifras en gris son la guía; escribe lo que hayas hecho de verdad (peso y reps, cualquier valor). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
+  h+=`<div class="sub"><div class="cardhead"><div><div class="label">Post-Bilbo · 3×8–12 @RIR 1</div><div class="big" style="font-size:32px"><span id="pw-${esc(ex)}">${p.w??"Bilbo × "+(1+p.pct).toFixed(2)}</span><small>${u}</small></div></div><span class="tag">+${Math.round(p.pct*1000)/10}%</span></div>`;
+  h+=`<div class="why">${esc(p.ev)} ${p.w?"Peso = Bilbo × "+(1+p.pct).toFixed(3).replace(/0+$/,"")+" redondeado.":"Se calcula al poner el peso Bilbo."} ${perSide(ex,p.w)?"· "+perSide(ex,p.w):""}</div><div class="sets">${setHead(u)}`;
+  for(let s=1;s<=3;s++){const k=ex+"|p"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"","8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(EX[ex].rest)}${restBtn(EX[ex].postRest)}</div></div></section>`;
   return h;
 }
 function cardDouble(ex,n){
   const E=EX[ex],d=planDouble(ex),u=unit(ex);
   let h=`<section class="card"><div class="cardhead"><div><div class="label">${n} · ${E.sets}×${E.min}–${E.max} @RIR ${E.rir}</div><h3>${esc(E.label||ex)}</h3></div>${tagOf(d.status)}</div>`;
-  h+=`<div class="presc"><div class="big">${d.w??"—"}<small>${u}</small></div><div class="small" style="max-width:60%"><b>Objetivo:</b> ${esc(d.target)}</div></div><div class="why">${esc(d.why)} ${perSide(ex,d.w)?"· "+perSide(ex,d.w):""}</div>`;
+  h+=`<div class="presc"><div class="big">${bigW(d.w,u)}</div><div class="small" style="max-width:60%"><b>Objetivo:</b> ${esc(d.target)}</div></div><div class="why">${esc(d.why)} ${perSide(ex,d.w)?"· "+perSide(ex,d.w):""}</div>`;
   const wu=warmups(ex,d.w);if(E.warm)h+=`<div class="warm"><b>Aproximación:</b> ${wu||"2 series progresivas ligeras (×8 y ×5)"}</div>`;
-  h+=`<div class="sets">`;
-  for(let s=1;s<=E.sets;s++){const k=ex+"|w"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"reps",`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
+  h+=`<div class="sets">${setHead(u)}`;
+  for(let s=1;s<=E.sets;s++){const k=ex+"|w"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"",`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}</div></section>`;
   return h;
 }
 function cardPower(ex,n){
   const E=EX[ex],d=planPower(ex),u=unit(ex),pc=E.impl==="pc";
   let h=`<section class="card"><div class="cardhead"><div><div class="label">${n} · Potencia · ${E.sets}×${E.reps} · ${E.rir}</div><h3>${ex}</h3></div>${tagOf(d.status)}</div>`;
-  h+=`<div class="presc"><div class="big">${pc?"PC":(d.w??"—")}<small>${pc?"peso corporal":u}</small></div></div><div class="why">${esc(d.why)} Califica cada serie: A rápida · B algo más lenta · C lenta (si sale C, para o baja).</div>`;
+  h+=`<div class="presc"><div class="big">${pc?`PC<small>peso corporal</small>`:bigW(d.w,u)}</div></div><div class="why">${esc(d.why)} Califica cada serie: A rápida · B algo más lenta · C lenta (si sale C, para o baja).</div>`;
   const wu=warmups(ex,d.w);if(E.warm)h+=`<div class="warm"><b>Aproximación:</b> ${wu||"2 series ligeras"}</div>`;
-  h+=`<div class="sets">`;
-  for(let s=1;s<=E.sets;s++){const k=ex+"|v"+s;h+=`<div class="setrow"><div class="n">${s}</div>${pc?`<div class="field"><input disabled value="PC"></div>`:numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"reps",String(E.reps))}${segField(k,"vel",["A","B","C"],dv(k,"vel",""))}</div>`}
+  h+=`<div class="sets">${setHead(pc?"corporal":u)}`;
+  for(let s=1;s<=E.sets;s++){const k=ex+"|v"+s;h+=`<div class="setrow"><div class="n">${s}</div>${pc?`<div class="field"><span class="fl">Peso</span><input disabled value="PC" aria-label="Peso corporal"></div>`:numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"",String(E.reps))}${segField(k,"vel",["A","B","C"],dv(k,"vel",""))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}</div></section>`;
   return h;
 }
@@ -388,7 +404,8 @@ function renderHist(){
   h+=`<div class="stack">`;
   for(const s of list){
     const by={};(s.sets||[]).forEach(x=>(by[x.ex]=by[x.ex]||[]).push(x));
-    h+=`<section class="card"><div class="cardhead"><div><div class="label">${fmtDate(s.date)} · ${esc(s.day)}${s.pending?" · pendiente de subir":""}</div></div><button class="btn small" data-del="${esc(s.id)}">Eliminar</button></div>`;
+    if(editBuf&&editBuf.id===s.id){h+=editForm();continue}
+    h+=`<section class="card"><div class="cardhead"><div><div class="label">${fmtDate(s.date)} · ${esc(s.day)}${s.pending?" · pendiente de subir":""}</div></div><div class="row"><button class="btn small" data-edit="${esc(s.id)}">Editar</button><button class="btn small" data-del="${esc(s.id)}">Eliminar</button></div></div>`;
     for(const ex in by){const a=by[ex],b=a.find(x=>x.type==="bilbo"),po=a.filter(x=>x.type==="post"),o=a.filter(x=>x.type==="work"||x.type==="power");
       let t=`<b>${esc(ex)}</b> `;
       if(b)t+=`Bilbo ${b.w}×${b.r} <span class="muted">(c${b.cycle}·s${b.cs}${b.exp?", est. "+b.exp:""})</span> `;
@@ -401,6 +418,31 @@ function renderHist(){
   return h+`</div>`;
 }
 
+const TYPEL={bilbo:"Bilbo",post:"Post",work:"",power:""};
+function editForm(){
+  const e=editBuf;let h=`<section class="card"><div class="cardhead"><h3>Editar sesión</h3></div>
+  <div class="formgrid" style="margin-top:8px"><span>Fecha</span><label class="field"><input type="date" id="edate" data-edate="1" value="${esc(e.date)}" aria-label="Fecha"></label></div><div class="edit">`;
+  e.sets.forEach((x,i)=>{const k=e.id+"#"+i;
+    h+=`<div class="setrow"><div class="ex">${esc(x.ex)}${TYPEL[x.type]?" · "+TYPEL[x.type]:""} · s${x.set}</div>${numField(k,"w",x.w,unit(x.ex)==="kg c/u"?"c/u":"kg","","data-ek")}${numField(k,"r",x.r,"","","data-ek")}`;
+    if(x.type==="post"||x.type==="work")h+=segField(k,"rir",[0,1,2,3],x.rir??1,"data-eseg");
+    if(x.type==="power")h+=segField(k,"vel",["A","B","C"],x.vel||"B","data-eseg");
+    h+=`</div>`});
+  h+=`</div><label class="label" for="enotes" style="display:block;margin-top:10px">Notas</label><textarea id="enotes" data-enotes="1">${esc(e.notes||"")}</textarea>
+  <div class="row" style="margin-top:10px"><button class="btn primary" id="esave">Guardar cambios</button><button class="btn" id="ecancel">Cancelar</button></div></section>`;
+  return h;
+}
+async function saveEdit(){
+  const e=editBuf,orig=sessions.find(s=>s.id===e.id);if(!orig){editBuf=null;render();return}
+  const sets=[];
+  for(const x of e.sets){const w=num(x.w),r=num(x.r);if(w==null||r==null){toast(`Falta peso o reps en ${x.ex} (serie ${x.set}).`);return}
+    const y={...x,w,r};if(y.rir!=null)y.rir=+y.rir;sets.push(y)}
+  for(const y of sets)if(y.type==="post"){const b=sets.find(z=>z.ex===y.ex&&z.type==="bilbo");if(b&&b.w)y.pct=Math.round((y.w/b.w-1)*1000)/1000}
+  const g=new Date(e.date+"T12:00:00").getDay();
+  const upd={...orig,date:e.date||orig.date,day:g>=1&&g<=5?DAYS[g-1]:orig.day,sets,notes:e.notes||""};
+  sessions=sessions.map(s=>s.id===upd.id?upd:s);LS.set("bilbo.sessions",sessions);
+  editBuf=null;await writeSession(upd);render();toast("Sesión corregida. Cargas recalculadas.");
+}
+
 /* ======================= AJUSTES ======================= */
 function renderAj(){
   let h=`<header class="top"><div><div class="label">Material y copias</div><h1>Ajustes</h1></div></header>`+dbBanner();
@@ -411,6 +453,8 @@ function renderAj(){
   <span>Redondeo</span><select id="c-mode" data-cfg="mode"><option value="near"${cfg.mode==="near"?" selected":""}>Más cercano</option><option value="down"${cfg.mode==="down"?" selected":""}>Hacia abajo</option><option value="up"${cfg.mode==="up"?" selected":""}>Hacia arriba</option></select>
   <span>Tirón vertical (M/V)</span><select id="c-vert" data-cfg="vertical"><option${cfg.vertical==="Jalón al pecho"?" selected":""}>Jalón al pecho</option><option${cfg.vertical==="Remo unilateral con mancuerna"?" selected":""}>Remo unilateral con mancuerna</option></select>
   </div></section>`;
+  h+=`<section class="card" style="margin-top:12px"><details><summary><h2>Incremento por ejercicio</h2><span class="small muted">abrir</span></summary><p class="small muted">Salto mínimo de carga de cada ejercicio (mancuernas: por mancuerna). Vacío = incremento general.</p><div class="formgrid">`+
+    Object.keys(EX).filter(x=>EX[x].impl!=="pc").map(x=>`<span>${esc(x)}</span><label class="field"><input type="text" inputmode="decimal" id="inc-${esc(x)}" data-inc="${esc(x)}" value="${esc(cfg.incs[x]??"")}" placeholder="${cfg.inc}"><span>kg</span></label>`).join("")+`</div></details></section>`;
   h+=`<section class="card" style="margin-top:12px"><h2>Referencias iniciales</h2><p class="small muted">Opcional. Una marca reciente (peso × reps, p. ej. 50×8) fija la primera carga Bilbo de forma conservadora. Solo se usa mientras no haya datos.</p><div class="stack">`;
   for(const ex of ["Press banca","Press militar","Remo bajo en polea"]){const r=cfg.refs[ex]||{};
     h+=`<div><div class="label">${ex}</div><div class="setrow" style="grid-template-columns:1fr 1fr"><label class="field"><input inputmode="decimal" id="ref-${ex}-w" data-ref="${ex}" data-f="w" value="${esc(r.w??"")}" placeholder="peso"><span>kg</span></label><label class="field"><input inputmode="numeric" id="ref-${ex}-r" data-ref="${ex}" data-f="r" value="${esc(r.r??"")}" placeholder="reps"><span>reps</span></label></div></div>`}
@@ -471,7 +515,7 @@ async function initCloud(){
   },e=>{dbState="off";safeRender()});
   db.doc("config/main").onSnapshot(snap=>{if(snap.exists){cfg=Object.assign(structuredClone(DEFAULT_CFG),structuredClone(snap.data()));LS.set("bilbo.cfg",cfg);safeRender()}},()=>{});
 }
-function safeRender(){const a=document.activeElement;if(a&&a.tagName==="INPUT"||a&&a.tagName==="TEXTAREA"){renderPending=true;return}render()}
+function safeRender(){const a=document.activeElement;if(editBuf||(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"))){renderPending=true;return}render()}
 
 /* ======================= TEMPORIZADOR ======================= */
 let tEnd=0,tInt=null,actx=null;
@@ -492,13 +536,18 @@ function render(){
 }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,label");if(!t)return;
-  if(t.dataset.tab){tab=t.dataset.tab;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
+  if(t.dataset.tab){tab=t.dataset.tab;editBuf=null;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
   if(t.dataset.day){day=t.dataset.day;render();return}
   if(t.dataset.seg){const k=t.dataset.seg,f=t.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=isNaN(+t.dataset.v)?t.dataset.v:+t.dataset.v;saveDraft();
     t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));return}
   if(t.dataset.rest){startRest(t.dataset.rest);return}
   if(t.id==="tstop"){clearInterval(tInt);$("#timer").hidden=true;return}
   if(t.id==="save"){t.disabled=true;await saveSession();return}
+  if(t.dataset.edit){const o=sessions.find(s=>s.id===t.dataset.edit);if(o){editBuf=structuredClone({id:o.id,date:o.date,notes:o.notes||"",sets:o.sets||[]});render()}return}
+  if(t.dataset.eseg){const i=+t.dataset.eseg.split("#")[1],f=t.dataset.f;if(editBuf&&editBuf.sets[i])editBuf.sets[i][f]=isNaN(+t.dataset.v)?t.dataset.v:+t.dataset.v;
+    t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));return}
+  if(t.id==="esave"){await saveEdit();return}
+  if(t.id==="ecancel"){editBuf=null;render();return}
   if(t.dataset.del){
     if(t.dataset.armed){const id=t.dataset.del;sessions=sessions.filter(s=>s.id!==id);LS.set("bilbo.sessions",sessions);
       if(db){try{await db.doc("sesiones/"+id).delete()}catch(_){toast("No se pudo eliminar en la nube.")}}render();toast("Sesión eliminada.");}
@@ -510,7 +559,17 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{
   const el=e.target;
   if(el.dataset.k){const k=el.dataset.k,f=el.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=el.value;saveDraft();
-    if(k.endsWith("|b")&&f==="w")updatePost(k.split("|")[0]);return}
+    if(k.endsWith("|b")&&f==="w")updatePost(k.split("|")[0]);
+    const m=k.match(/^(.*\|[pwv])(\d+)$/);
+    if(m&&f==="w"){if(draft.v[k])delete draft.v[k].wAuto;
+      for(let n=+m[2]+1;n<=8;n++){const kk=m[1]+n,dk=draft.v[kk];if(dk&&dk.w!==undefined&&!dk.wAuto)break;const inp=document.getElementById(kk+"-w");if(!inp)break;
+        inp.value=el.value;draft.v[kk]=Object.assign(dk||{},{w:el.value,wAuto:true})}
+      saveDraft()}
+    return}
+  if(el.dataset.ek){const [id,i]=el.dataset.ek.split("#");const x=editBuf&&editBuf.sets[+i];if(x){x[el.dataset.f]=el.value}return}
+  if(el.dataset.edate){if(editBuf)editBuf.date=el.value;return}
+  if(el.dataset.enotes){if(editBuf)editBuf.notes=el.value;return}
+  if(el.dataset.inc){const v=num(el.value);if(v!=null&&v>0)cfg.incs[el.dataset.inc]=v;else delete cfg.incs[el.dataset.inc];cfgChanged();return}
   if(el.dataset.ref){const ex=el.dataset.ref;cfg.refs[ex]=cfg.refs[ex]||{};cfg.refs[ex][el.dataset.f]=num(el.value);cfgChanged();return}
 });
 document.addEventListener("change",e=>{
@@ -522,6 +581,7 @@ document.addEventListener("focusout",()=>{setTimeout(()=>{if(renderPending&&!(do
 function updatePost(ex){
   // recalcula el peso post si el usuario cambia el peso Bilbo y aún no tocó los pesos post
   const bw=num(dv(ex+"|b","w",""));if(bw==null)return;const p=planPost(ex,bw);
+  const big=document.getElementById("pw-"+ex);if(big)big.textContent=p.w;
   for(let s=1;s<=3;s++){const k=ex+"|p"+s;if(draft.v[k]&&draft.v[k].w!==undefined)continue;const inp=document.getElementById(k+"-w");if(inp)inp.value=p.w}
 }
 render();
