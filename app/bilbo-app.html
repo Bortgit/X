@@ -180,10 +180,7 @@ function lastGroup(arr){if(!arr.length)return[];const sid=arr[arr.length-1].sid;
 function planBilbo(ex){
   const inc=incOf(ex), bs=setsOf(ex,"bilbo");
   if(!bs.length){
-    const ref=cfg.refs[ex];
-    if(ref&&ref.w&&ref.r){const w=Math.max(EX[ex].impl==="barra"?cfg.bar:inc,rdown(ref.w*(1+ref.r/30)*0.47,inc));
-      return {cycle:1,cs:1,w,exp:35,status:"calib",why:`Inicio conservador a partir de tu referencia ${ref.w}×${ref.r} (≈30–40 reps). No es un test máximo.`}}
-    return {cycle:1,cs:1,w:null,exp:null,status:"calib",why:"Sin datos. Elige una carga que puedas mover unas 30–40 veces (≈ la mitad de lo que usarías para 8–10 reps). Ante la duda, la menor. Si llegas a 50, para."};
+    return {cycle:1,cs:1,w:null,exp:null,status:"calib",why:"Primer día: pon tú el peso con el que partes y las repeticiones que hagas. A partir de aquí la app calcula el resto."};
   }
   const last=bs[bs.length-1], cyc=bs.filter(s=>s.cycle===last.cycle), first=cyc[0];
   const rate=cyc.length>=2&&last.w!==first.w?Math.max(.5,(first.r-last.r)/(last.w-first.w)):1.5;
@@ -215,7 +212,7 @@ function planPost(ex,bw){
 }
 function planDouble(ex){
   const E=EX[ex],inc=incOf(ex),all=setsOf(ex,"work"),g=lastGroup(all);
-  if(!g.length)return {w:null,status:"calib",target:`Calibrar: carga para ${E.min}–${E.min+2} reps @RIR 1–2 en la 1ª serie`,why:"Sin datos todavía."};
+  if(!g.length)return {w:null,status:"calib",target:`Rango ${E.min}–${E.max} reps @RIR ${E.rir}`,why:"Primer día: pon tú el peso y las repeticiones de cada serie."};
   const w=g[g.length-1].w,at=g.filter(s=>s.w===w),reps=at.map(s=>s.r),mn=Math.min(...reps);
   if(at.length>=E.sets&&mn>=E.max){
     const nw=rnd(w+Math.max(inc,w*.025),inc);
@@ -237,7 +234,7 @@ function planPower(ex){
     if(ex==="Press banca dinámico"){const b=planBilbo("Press banca");if(b.w)base=rdown(b.w*.9,inc)}
     else{const s=planDouble("Sentadilla");if(s.w)base=rdown(s.w*.65,inc)}
     if(base!=null)base=Math.max(cfg.bar,base);
-    return {w:base,status:"calib",why:base?"Primera sesión: carga ligera para máxima velocidad.":"Sin referencia: elige una carga que se mueva muy rápido."};}
+    return {w:base,status:"calib",why:base?"Primera sesión: carga ligera para máxima velocidad (puedes cambiarla).":"Primer día: pon tú el peso; debe moverse muy rápido."};}
   const w=g[0].w,v=g.map(s=>s.vel||"B");
   if(v.includes("C"))return {w:r2(Math.max(cfg.bar,w-2*inc)),status:"down",why:"Hubo series lentas (C): baja carga."};
   if(v.every(x=>x==="A"))return {w:r2(w+inc),status:"up",why:"Todas las series rápidas (A): +"+inc+" kg."};
@@ -259,7 +256,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 function saveDraft(){LS.set("bilbo.draft",draft)}
 function dv(key,field,def){const v=draft.v[key];return v&&v[field]!==undefined?v[field]:def}
-const STATUS={calib:["CALIBRAR","warn"],new:["NUEVO CICLO","ok"],prog:["EN PROGRESIÓN","ok"],near:["PRÓXIMO A TERMINAR","warn"],last:["ÚLTIMA DEL CICLO PROBABLE","warn"],low:["RENDIMIENTO BAJO","bad"],
+const STATUS={calib:["PRIMER DÍA","warn"],new:["NUEVO CICLO","ok"],prog:["EN PROGRESIÓN","ok"],near:["PRÓXIMO A TERMINAR","warn"],last:["ÚLTIMA DEL CICLO PROBABLE","warn"],low:["RENDIMIENTO BAJO","bad"],
   up:["SUBIR CARGA","ok"],hold:["MANTENER","" ],below:["POR DEBAJO DEL RANGO","warn"],down:["BAJAR","bad"],stack:["PILA AL MÁXIMO","bad"]};
 const tagOf=s=>{const [t,c]=STATUS[s]||[s,""];return `<span class="tag ${c}">${t}</span>`};
 
@@ -288,8 +285,8 @@ function renderHoy(){
     h+=`<section class="card"><div class="label">Próximo entreno · ${weekdayLabel(nd)}</div><h2>${P.name}</h2><div class="small" style="display:grid;gap:4px;margin-top:8px">`;
     for(const ex of P.lines){const E=EX[ex];
       if(E.kind==="bilbo"){const b=planBilbo(ex),pp=planPost(ex,b.w),bs=setsOf(ex,"bilbo"),l=bs[bs.length-1];
-        h+=`<div><b>${esc(ex)}</b>: Bilbo ${b.w??"a calibrar"}${b.w?" kg":""}${l?` <span class="muted">(anterior ${l.w}×${l.r})</span>`:""} · post ${pp.w??"—"}${pp.w?" kg":""}</div>`}
-      else{const d=E.kind==="double"?planDouble(ex):planPower(ex);h+=`<div><b>${esc(E.label||ex)}</b>: ${E.impl==="pc"?"peso corporal":(d.w!=null?d.w+" "+unit(ex):"a calibrar")}</div>`}}
+        h+=`<div><b>${esc(ex)}</b>: Bilbo ${b.w??"lo pones tú"}${b.w?" kg":""}${l?` <span class="muted">(anterior ${l.w}×${l.r})</span>`:""} · post ${pp.w??"—"}${pp.w?" kg":""}</div>`}
+      else{const d=E.kind==="double"?planDouble(ex):planPower(ex);h+=`<div><b>${esc(E.label||ex)}</b>: ${E.impl==="pc"?"peso corporal":(d.w!=null?d.w+" "+unit(ex):"lo pones túcalibrar")}</div>`}}
     return h+`</div></section>`;
   }
   const P=plan(day),done=sessions.find(x=>x.date===t&&x.day===day);
@@ -310,17 +307,17 @@ function renderHoy(){
 function cardBilbo(ex,n){
   const b=planBilbo(ex),bw=+dv(K(ex,"b"),"w",b.w??"")||b.w,p=planPost(ex,bw),u=unit(ex);
   let h=`<section class="card bilbo"><div class="cardhead"><div><div class="label">${n} · Bilbo · ciclo ${b.cycle} · sesión ${b.cs}</div><h3>${ex}</h3></div>${tagOf(b.status)}</div>`;
-  h+=`<div class="presc"><div class="big">${bigW(b.w,u)}</div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:"30–40"}</div></div></div>`;
+  h+=`<div class="presc"><div class="big">${bigW(b.w,u)}</div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:b.w==null?"—":"30–40"}</div></div></div>`;
   h+=`<div class="why">${esc(b.why)} ${perSide(ex,b.w)?"· "+perSide(ex,b.w):""}</div>`;
   const wu=warmups(ex,b.w);h+=`<div class="warm"><b>Aproximación:</b> ${wu?wu:"2 series progresivas ligeras (×8 y ×5)"}</div>`;
   const allB=setsOf(ex,"bilbo"),lb=allB[allB.length-1];
-  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(K(ex,"b"),"w",dv(K(ex,"b"),"w",b.w??""),u,"peso","data-k",b.w!=null&&!unlocked[ex])}${numField(K(ex,"b"),"r",dv(K(ex,"b"),"r",""),"",lb?"ant. "+lb.r:(b.exp?"≈"+b.exp:""))}</div></div>`;
+  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(K(ex,"b"),"w",dv(K(ex,"b"),"w",b.w??""),u,"peso","data-k",b.w!=null&&!unlocked[ex]&&setsOf(ex,"bilbo").length>0)}${numField(K(ex,"b"),"r",dv(K(ex,"b"),"r",""),"",lb?"ant. "+lb.r:(b.exp?"≈"+b.exp:""))}</div></div>`;
   h+=lb?`<div class="prev"><span class="label">Tu última serie Bilbo</span><b class="num">${lb.w} kg × ${lb.r} reps</b><span class="muted small">${dshort(lb.date)} · ciclo ${lb.cycle}</span></div>`:"";
   h+=`<div class="small muted" style="margin-top:6px">«ant.» = reps de tu sesión anterior en esa serie. Solo apunta las repeticiones: el peso ya está calculado (si usaste otro, pulsa «Cambiar pesos»). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
   h+=`<div class="sub"><div class="cardhead"><div><div class="label">Post-Bilbo · 3×8–12 @RIR 1</div><div class="big" style="font-size:32px"><span id="pw-${esc(ex)}">${p.w??"Bilbo × "+(1+p.pct).toFixed(2)}</span><small>${u}</small></div></div><span class="tag">+${Math.round(p.pct*1000)/10}%</span></div>`;
   h+=`<div class="why">${esc(p.ev)} ${p.w?"Peso = Bilbo × "+(1+p.pct).toFixed(3).replace(/0+$/,"")+" redondeado.":"Se calcula al poner el peso Bilbo."} ${perSide(ex,p.w)?"· "+perSide(ex,p.w):""}</div><div class="sets">${setHead(u)}`;
   const pr=prevReps(ex,"post");
-  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso","data-k",p.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",pr[s]?"ant. "+pr[s].r:"8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
+  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso","data-k",p.w!=null&&!unlocked[ex]&&pr[s]!=null)}${numField(k,"r",dv(k,"r",""),"",pr[s]?"ant. "+pr[s].r:"8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(EX[ex].rest)}${restBtn(EX[ex].postRest)}${b.w!=null?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></div></section>`;
   return h;
 }
@@ -395,7 +392,7 @@ function renderProg(){
     const cycles={};bs.forEach(s=>(cycles[s.cycle]=cycles[s.cycle]||[]).push(s));
     const maxW=bs.length?Math.max(...bs.map(s=>s.w)):null,maxWr=maxW!=null?Math.max(...bs.filter(s=>s.w===maxW).map(s=>s.r)):null,maxR=bs.length?Math.max(...bs.map(s=>s.r)):null;
     h+=`<section class="card bilbo" style="margin-bottom:12px"><div class="cardhead"><div><div class="label">Bilbo · ciclo ${b.cycle} · próxima sesión ${b.cs}</div><h2>${ex}</h2></div>${tagOf(b.status)}</div>`;
-    h+=`<div class="kv"><div><span class="label">Próximo</span><b>${b.w??"—"}</b><span class="small muted">${b.exp?"≈"+b.exp+" reps":"calibrar"}</span></div><div><span class="label">Post</span><b>${p.w??"—"}</b><span class="small muted">+${Math.round(p.pct*1000)/10}%</span></div><div><span class="label">Récord</span><b>${maxW??"—"}</b><span class="small muted">${maxW!=null?"×"+maxWr+" · máx "+maxR+" reps":"sin datos"}</span></div></div>`;
+    h+=`<div class="kv"><div><span class="label">Próximo</span><b>${b.w??"—"}</b><span class="small muted">${b.exp?"≈"+b.exp+" reps":"primer día"}</span></div><div><span class="label">Post</span><b>${p.w??"—"}</b><span class="small muted">+${Math.round(p.pct*1000)/10}%</span></div><div><span class="label">Récord</span><b>${maxW??"—"}</b><span class="small muted">${maxW!=null?"×"+maxWr+" · máx "+maxR+" reps":"sin datos"}</span></div></div>`;
     h+=`<div class="why">${esc(b.why)}</div>`;
     if(bs.length)h+=chart(bs);
     const keys=Object.keys(cycles).map(Number).sort((a,b)=>a-b);
@@ -490,10 +487,6 @@ function renderAj(){
   </div></section>`;
   h+=`<section class="card" style="margin-top:12px"><details><summary><h2>Incremento por ejercicio</h2><span class="small muted">abrir</span></summary><p class="small muted">Salto mínimo de carga de cada ejercicio (mancuernas: por mancuerna). Vacío = incremento general.</p><div class="formgrid">`+
     Object.keys(EX).filter(x=>EX[x].impl!=="pc").map(x=>`<span>${esc(x)}</span><label class="field"><input type="text" inputmode="decimal" id="inc-${esc(x)}" data-inc="${esc(x)}" value="${esc(cfg.incs[x]??"")}" placeholder="${cfg.inc}"><span>kg</span></label>`).join("")+`</div></details></section>`;
-  h+=`<section class="card" style="margin-top:12px"><h2>Referencias iniciales</h2><p class="small muted">Opcional. Una marca reciente (peso × reps, p. ej. 50×8) fija la primera carga Bilbo de forma conservadora. Solo se usa mientras no haya datos.</p><div class="stack">`;
-  for(const ex of ["Press banca","Press militar","Remo bajo en polea"]){const r=cfg.refs[ex]||{};
-    h+=`<div><div class="label">${ex}</div><div class="setrow" style="grid-template-columns:1fr 1fr"><label class="field"><input inputmode="decimal" id="ref-${ex}-w" data-ref="${ex}" data-f="w" value="${esc(r.w??"")}" placeholder="peso"><span>kg</span></label><label class="field"><input inputmode="numeric" id="ref-${ex}-r" data-ref="${ex}" data-f="r" value="${esc(r.r??"")}" placeholder="reps"><span>reps</span></label></div></div>`}
-  h+=`</div></section>`;
   h+=`<section class="card" style="margin-top:12px"><h2>Copias de seguridad</h2><p class="small muted">Los datos se guardan en la base de datos de esta app. Exporta de vez en cuando: el CSV sigue el formato de la hoja HISTORIAL del Excel.</p>
   <div class="row"><button class="btn" id="exp-csv">Exportar CSV</button><button class="btn" id="exp-json">Exportar copia (JSON)</button>
   <label class="btn" for="imp">Importar copia</label><input type="file" id="imp" accept=".json,application/json" hidden></div></section>`;
@@ -606,7 +599,6 @@ document.addEventListener("input",e=>{
   if(el.dataset.edate){if(editBuf)editBuf.date=el.value;return}
   if(el.dataset.enotes){if(editBuf)editBuf.notes=el.value;return}
   if(el.dataset.inc){const v=num(el.value);if(v!=null&&v>0)cfg.incs[el.dataset.inc]=v;else delete cfg.incs[el.dataset.inc];cfgChanged();return}
-  if(el.dataset.ref){const ex=el.dataset.ref;cfg.refs[ex]=cfg.refs[ex]||{};cfg.refs[ex][el.dataset.f]=num(el.value);cfgChanged();return}
 });
 document.addEventListener("change",e=>{
   const el=e.target;
