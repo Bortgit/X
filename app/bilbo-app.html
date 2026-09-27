@@ -54,6 +54,8 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .setrow .seg{grid-column:2/4}
 .setrow + .setrow{padding-top:8px;border-top:1px solid var(--line)}
 .setrow.sethead{padding:0;border:0}
+.prev{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:8px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--bilbo) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--bilbo) 35%,var(--line))}
+.prev b{font:700 22px var(--display)}
 .field.ro{background:transparent;border-color:transparent;padding-left:4px}
 .field.ro input{color:var(--ink);cursor:default}
 .field.need{border-color:var(--accent)}
@@ -160,13 +162,7 @@ try{tab=localStorage.getItem("bilbo.tab")||"hoy"}catch(e){}
 
 function todayISO(d=new Date()){const z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())}
 function fmtDate(iso){const [y,m,d]=iso.split("-");return `${+d}/${+m}/${y.slice(2)}`}
-let dayManual=false;
-function defaultDay(){
-  const g=new Date().getDay(),o=ordered(),last=o[o.length-1];
-  const next=last&&DAYS.includes(last.day)?DAYS[(DAYS.indexOf(last.day)+1)%5]:"LUNES";
-  if(g>=1&&g<=5&&!(last&&last.date===todayISO()))return DAYS[g-1];
-  return next;
-}
+function defaultDay(){const g=new Date().getDay();return g>=1&&g<=5?DAYS[g-1]:null}
 day=defaultDay();
 draft=LS.get("bilbo.draft",{});
 if(draft.date!==todayISO()) draft={date:todayISO(),v:{}};
@@ -275,17 +271,34 @@ function segField(key,field,opts,val,attr="data-seg"){
   const lab=field==="rir"?"RIR":"Velocidad";
   return `<div class="seg" role="group" aria-label="${lab}"><span class="sl">${lab}</span>${opts.map(o=>`<button type="button" ${attr}="${esc(key)}" data-f="${field}" data-v="${o}" aria-pressed="${String(val)===String(o)}">${o}</button>`).join("")}</div>`;
 }
+function prevReps(ex,type){const g=lastGroup(setsOf(ex,type));const m={};g.forEach(x=>m[x.set]=x);return m}
+const dshort=iso=>{const [y,m,d]=iso.split("-");return `${+d}/${+m}`};
 function setHead(u){return `<div class="setrow sethead"><span></span><span class="label">Peso (${u})</span><span class="label">Reps</span></div>`}
 const bigW=(w,u)=>w==null?`<span style="font-size:24px">Elige la carga</span>`:`${w}<small>${u}</small>`;
 function restBtn(t){return `<button type="button" class="btn small" data-rest="${t}">Descanso ${t}</button>`}
 
 /* ======================= PANTALLA HOY ======================= */
+function nextTrainingDay(){const g=new Date().getDay();return g===0||g===6?"LUNES":DAYS[g%5]}
+function weekdayLabel(d){return d[0]+d.slice(1).toLowerCase()}
 function renderHoy(){
-  const P=plan(day), wk=new Date().getDay();
-  let h=`<header class="top"><div><div class="label">${fmtDate(todayISO())}${wk===0||wk===6?" · fin de semana":""}</div><h1>${day[0]+day.slice(1).toLowerCase()} · ${P.name}</h1></div></header>`;
-  h+=`<div class="daychips" role="group" aria-label="Día del plan">${DAYS.map(d=>`<button class="chipbtn" data-day="${d}" aria-pressed="${d===day}">${DAYSHORT[d]}</button>`).join("")}</div>`;
-  h+=`<div class="formgrid" style="margin-bottom:12px"><span class="small">Fecha de la sesión</span><label class="field"><input type="date" id="sdate" data-sdate="1" value="${esc(draft.sdate||todayISO())}" aria-label="Fecha de la sesión"></label></div>`;
-  h+=dbBanner();
+  const t=todayISO();
+  if(!day){
+    const nd=nextTrainingDay(),P=plan(nd);
+    let h=`<header class="top"><div><div class="label">${fmtDate(t)}</div><h1>Hoy toca descanso</h1></div></header>`+dbBanner();
+    h+=`<section class="card"><div class="label">Próximo entreno · ${weekdayLabel(nd)}</div><h2>${P.name}</h2><div class="small" style="display:grid;gap:4px;margin-top:8px">`;
+    for(const ex of P.lines){const E=EX[ex];
+      if(E.kind==="bilbo"){const b=planBilbo(ex),pp=planPost(ex,b.w),bs=setsOf(ex,"bilbo"),l=bs[bs.length-1];
+        h+=`<div><b>${esc(ex)}</b>: Bilbo ${b.w??"a calibrar"}${b.w?" kg":""}${l?` <span class="muted">(anterior ${l.w}×${l.r})</span>`:""} · post ${pp.w??"—"}${pp.w?" kg":""}</div>`}
+      else{const d=E.kind==="double"?planDouble(ex):planPower(ex);h+=`<div><b>${esc(E.label||ex)}</b>: ${E.impl==="pc"?"peso corporal":(d.w!=null?d.w+" "+unit(ex):"a calibrar")}</div>`}}
+    return h+`</div></section>`;
+  }
+  const P=plan(day),done=sessions.find(x=>x.date===t&&x.day===day);
+  let h=`<header class="top"><div><div class="label">${fmtDate(t)} · ${weekdayLabel(day)}</div><h1>${P.name}</h1></div></header>`+dbBanner();
+  if(done){
+    h+=`<section class="card"><div class="cardhead"><h2>Entreno de hoy guardado</h2>${tagOf("prog").replace("EN PROGRESIÓN","HECHO")}</div><div style="margin-top:8px">${sessionLines(done)}</div>
+    <p class="small muted">Para corregir algo, ve a Historial → Editar. Las próximas cargas ya están calculadas en Progreso.</p></section>`;
+    return h;
+  }
   h+=`<div class="banner"><b>Calentamiento.</b> ${day==="MIÉRCOLES"?MOB_LONG:MOB_SHORT} Después, solo 2 series de aproximación en los principales (indicadas en cada ejercicio).</div>`;
   h+=`<div class="stack">`;
   P.lines.forEach((ex,i)=>{h+=EX[ex].kind==="bilbo"?cardBilbo(ex,i+1):EX[ex].kind==="double"?cardDouble(ex,i+1):cardPower(ex,i+1)});
@@ -300,11 +313,14 @@ function cardBilbo(ex,n){
   h+=`<div class="presc"><div class="big">${bigW(b.w,u)}</div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:"30–40"}</div></div></div>`;
   h+=`<div class="why">${esc(b.why)} ${perSide(ex,b.w)?"· "+perSide(ex,b.w):""}</div>`;
   const wu=warmups(ex,b.w);h+=`<div class="warm"><b>Aproximación:</b> ${wu?wu:"2 series progresivas ligeras (×8 y ×5)"}</div>`;
-  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(K(ex,"b"),"w",dv(K(ex,"b"),"w",b.w??""),u,"peso","data-k",b.w!=null&&!unlocked[ex])}${numField(K(ex,"b"),"r",dv(K(ex,"b"),"r",""),"",b.exp?"≈"+b.exp:"")}</div></div>`;
-  h+=`<div class="small muted" style="margin-top:6px">Solo apunta las repeticiones: el peso ya está calculado (si usaste otro, pulsa «Cambiar pesos»). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
+  const allB=setsOf(ex,"bilbo"),lb=allB[allB.length-1];
+  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(K(ex,"b"),"w",dv(K(ex,"b"),"w",b.w??""),u,"peso","data-k",b.w!=null&&!unlocked[ex])}${numField(K(ex,"b"),"r",dv(K(ex,"b"),"r",""),"",lb?"ant. "+lb.r:(b.exp?"≈"+b.exp:""))}</div></div>`;
+  h+=lb?`<div class="prev"><span class="label">Tu última serie Bilbo</span><b class="num">${lb.w} kg × ${lb.r} reps</b><span class="muted small">${dshort(lb.date)} · ciclo ${lb.cycle}</span></div>`:"";
+  h+=`<div class="small muted" style="margin-top:6px">«ant.» = reps de tu sesión anterior en esa serie. Solo apunta las repeticiones: el peso ya está calculado (si usaste otro, pulsa «Cambiar pesos»). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
   h+=`<div class="sub"><div class="cardhead"><div><div class="label">Post-Bilbo · 3×8–12 @RIR 1</div><div class="big" style="font-size:32px"><span id="pw-${esc(ex)}">${p.w??"Bilbo × "+(1+p.pct).toFixed(2)}</span><small>${u}</small></div></div><span class="tag">+${Math.round(p.pct*1000)/10}%</span></div>`;
   h+=`<div class="why">${esc(p.ev)} ${p.w?"Peso = Bilbo × "+(1+p.pct).toFixed(3).replace(/0+$/,"")+" redondeado.":"Se calcula al poner el peso Bilbo."} ${perSide(ex,p.w)?"· "+perSide(ex,p.w):""}</div><div class="sets">${setHead(u)}`;
-  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso","data-k",p.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"","8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
+  const pr=prevReps(ex,"post");
+  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso","data-k",p.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",pr[s]?"ant. "+pr[s].r:"8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(EX[ex].rest)}${restBtn(EX[ex].postRest)}${b.w!=null?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></div></section>`;
   return h;
 }
@@ -314,7 +330,8 @@ function cardDouble(ex,n){
   h+=`<div class="presc"><div class="big">${bigW(d.w,u)}</div><div class="small" style="max-width:60%"><b>Objetivo:</b> ${esc(d.target)}</div></div><div class="why">${esc(d.why)} ${perSide(ex,d.w)?"· "+perSide(ex,d.w):""}</div>`;
   const wu=warmups(ex,d.w);if(E.warm)h+=`<div class="warm"><b>Aproximación:</b> ${wu||"2 series progresivas ligeras (×8 y ×5)"}</div>`;
   h+=`<div class="sets">${setHead(u)}`;
-  for(let s=1;s<=E.sets;s++){const k=K(ex,"w"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso","data-k",d.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
+  const pr=prevReps(ex,"work");
+  for(let s=1;s<=E.sets;s++){const k=K(ex,"w"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso","data-k",d.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",pr[s]?"ant. "+pr[s].r:`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
   h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}${d.w!=null?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></section>`;
   return h;
 }
@@ -332,6 +349,7 @@ function cardPower(ex,n){
 /* ======================= GUARDAR SESIÓN ======================= */
 const num=v=>{if(v===""||v==null)return null;const n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:null};
 async function saveSession(){
+  if(!day)return;
   const P=plan(day),sets=[];
   for(const ex of P.lines){
     const E=EX[ex];
@@ -354,11 +372,11 @@ async function saveSession(){
   }
   if(!sets.length){toast("No hay series con peso y repeticiones.");const b=$("#save");if(b)b.disabled=false;return}
   const id="s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  const s={id,date:draft.sdate||todayISO(),day,createdAt:Date.now(),sets,notes:dv(day+"~__notes","t","")};
+  const s={id,date:todayISO(),day,createdAt:Date.now(),sets,notes:dv(day+"~__notes","t","")};
   sessions.push(s);LS.set("bilbo.sessions",sessions);
   draft={date:todayISO(),v:{}};saveDraft();unlocked={};
   await writeSession(s);
-  dayManual=false;day=defaultDay();
+  day=defaultDay();
   tab="prog";render();window.scrollTo(0,0);toast("Sesión guardada. Próximas cargas actualizadas.");
 }
 async function writeSession(s){
@@ -410,21 +428,25 @@ function chart(bs){
 }
 
 /* ======================= HISTORIAL ======================= */
+function sessionLines(s){
+  const by={};(s.sets||[]).forEach(x=>(by[x.ex]=by[x.ex]||[]).push(x));let h="";
+  for(const ex in by){const a=by[ex],b=a.find(x=>x.type==="bilbo"),po=a.filter(x=>x.type==="post"),o=a.filter(x=>x.type==="work"||x.type==="power");
+    let t=`<b>${esc(ex)}</b> `;
+    if(b)t+=`Bilbo ${b.w}×${b.r} <span class="muted">(c${b.cycle}·s${b.cs}${b.exp?", est. "+b.exp:""})</span> `;
+    if(po.length)t+=`· post ${po[0].w}×${po.map(x=>x.r).join("/")} @RIR${Math.min(...po.map(x=>x.rir??1))} `;
+    if(o.length)t+=`${o[0].w}×${o.map(x=>x.r+(x.vel?x.vel:"")).join("/")}${o[0].rir!=null&&o[0].type==="work"?" @RIR"+Math.min(...o.map(x=>x.rir)):""}`;
+    h+=`<div class="sessline num">${t}</div>`}
+  return h;
+}
 function renderHist(){
   let h=`<header class="top"><div><div class="label">${sessions.length} sesiones</div><h1>Historial</h1></div></header>`+dbBanner();
   const list=ordered().reverse();
   if(!list.length)return h+`<div class="card empty">Todavía no hay sesiones. La primera se guarda desde "Hoy".</div>`;
   h+=`<div class="stack">`;
   for(const s of list){
-    const by={};(s.sets||[]).forEach(x=>(by[x.ex]=by[x.ex]||[]).push(x));
     if(editBuf&&editBuf.id===s.id){h+=editForm();continue}
     h+=`<section class="card"><div class="cardhead"><div><div class="label">${fmtDate(s.date)} · ${esc(s.day)}${s.pending?" · pendiente de subir":""}</div></div><div class="row"><button class="btn small" data-edit="${esc(s.id)}">Editar</button><button class="btn small" data-del="${esc(s.id)}">Eliminar</button></div></div>`;
-    for(const ex in by){const a=by[ex],b=a.find(x=>x.type==="bilbo"),po=a.filter(x=>x.type==="post"),o=a.filter(x=>x.type==="work"||x.type==="power");
-      let t=`<b>${esc(ex)}</b> `;
-      if(b)t+=`Bilbo ${b.w}×${b.r} <span class="muted">(c${b.cycle}·s${b.cs}${b.exp?", est. "+b.exp:""})</span> `;
-      if(po.length)t+=`· post ${po[0].w}×${po.map(x=>x.r).join("/")} @RIR${Math.min(...po.map(x=>x.rir??1))} `;
-      if(o.length)t+=`${o[0].w}×${o.map(x=>x.r+(x.vel?x.vel:"")).join("/")}${o[0].rir!=null&&o[0].type==="work"?" @RIR"+Math.min(...o.map(x=>x.rir)):""}`;
-      h+=`<div class="sessline num">${t}</div>`}
+    h+=sessionLines(s);
     if(s.notes)h+=`<div class="why">📝 ${esc(s.notes)}</div>`;
     h+=`</section>`;
   }
@@ -523,7 +545,7 @@ async function initCloud(){
     const remote=snap.docs.map(d=>({id:d.id,...d.data()}));
     const ids=new Set(remote.map(s=>s.id)),pend=sessions.filter(s=>s.pending&&!ids.has(s.id));
     sessions=[...remote.map(s=>({...s})),...pend];LS.set("bilbo.sessions",sessions);dbState="ok";
-    if(!dayManual)day=defaultDay();
+    day=defaultDay();
     if(first){first=false;for(const s of pend)await writeSession(s)}
     safeRender();
   },e=>{dbState="off";safeRender()});
@@ -551,7 +573,6 @@ function render(){
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,label");if(!t)return;
   if(t.dataset.tab){tab=t.dataset.tab;editBuf=null;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
-  if(t.dataset.day){day=t.dataset.day;dayManual=true;render();return}
   if(t.dataset.unlock){const ex=t.dataset.unlock;unlocked[ex]=!unlocked[ex];render();return}
   if(t.dataset.seg){const k=t.dataset.seg,f=t.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=isNaN(+t.dataset.v)?t.dataset.v:+t.dataset.v;saveDraft();
     t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));return}
@@ -582,7 +603,6 @@ document.addEventListener("input",e=>{
       saveDraft()}
     return}
   if(el.dataset.ek){const [id,i]=el.dataset.ek.split("#");const x=editBuf&&editBuf.sets[+i];if(x){x[el.dataset.f]=el.value}return}
-  if(el.dataset.sdate){draft.sdate=el.value;saveDraft();return}
   if(el.dataset.edate){if(editBuf)editBuf.date=el.value;return}
   if(el.dataset.enotes){if(editBuf)editBuf.notes=el.value;return}
   if(el.dataset.inc){const v=num(el.value);if(v!=null&&v>0)cfg.incs[el.dataset.inc]=v;else delete cfg.incs[el.dataset.inc];cfgChanged();return}
