@@ -54,6 +54,9 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .setrow .seg{grid-column:2/4}
 .setrow + .setrow{padding-top:8px;border-top:1px solid var(--line)}
 .setrow.sethead{padding:0;border:0}
+.field.ro{background:transparent;border-color:transparent;padding-left:4px}
+.field.ro input{color:var(--ink);cursor:default}
+.field.need{border-color:var(--accent)}
 .setrow.sethead + .setrow{padding-top:0;border-top:0}
 .sethead .label{font-size:11px}
 .setrow .n{font:700 16px var(--display);color:var(--muted);text-align:center}
@@ -157,10 +160,17 @@ try{tab=localStorage.getItem("bilbo.tab")||"hoy"}catch(e){}
 
 function todayISO(d=new Date()){const z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())}
 function fmtDate(iso){const [y,m,d]=iso.split("-");return `${+d}/${+m}/${y.slice(2)}`}
-function defaultDay(){const g=new Date().getDay();return g>=1&&g<=5?DAYS[g-1]:"LUNES"}
+let dayManual=false;
+function defaultDay(){
+  const g=new Date().getDay(),o=ordered(),last=o[o.length-1];
+  const next=last&&DAYS.includes(last.day)?DAYS[(DAYS.indexOf(last.day)+1)%5]:"LUNES";
+  if(g>=1&&g<=5&&!(last&&last.date===todayISO()))return DAYS[g-1];
+  return next;
+}
 day=defaultDay();
 draft=LS.get("bilbo.draft",{});
 if(draft.date!==todayISO()) draft={date:todayISO(),v:{}};
+let unlocked={};
 
 /* ======================= MOTOR DE PROGRESIÓN ======================= */
 const r2=x=>Math.round(x*100)/100;
@@ -248,6 +258,7 @@ const unit=ex=>EX[ex].impl==="mancuernas"?"kg c/u":"kg";
 
 /* ======================= UTILIDADES UI ======================= */
 const $=s=>document.querySelector(s);
+const K=(ex,suf)=>day+"~"+ex+"|"+suf;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 function saveDraft(){LS.set("bilbo.draft",draft)}
@@ -257,8 +268,8 @@ const STATUS={calib:["CALIBRAR","warn"],new:["NUEVO CICLO","ok"],prog:["EN PROGR
 const tagOf=s=>{const [t,c]=STATUS[s]||[s,""];return `<span class="tag ${c}">${t}</span>`};
 
 const FL={w:"Peso",r:"Reps"};
-function numField(key,field,val,suffix,ph,attr="data-k"){
-  return `<label class="field">${attr==="data-k"?"":`<span class="fl">${FL[field]||""}</span>`}<input type="text" inputmode="decimal" autocomplete="off" id="${esc(key+"-"+field)}" ${attr}="${esc(key)}" data-f="${field}" value="${esc(val??"")}" placeholder="${esc(ph??"")}" aria-label="${FL[field]||field}">${suffix&&attr!=="data-k"?`<span>${suffix}</span>`:""}</label>`;
+function numField(key,field,val,suffix,ph,attr="data-k",ro=false){
+  return `<label class="field${ro?" ro":""}">${attr==="data-k"?"":`<span class="fl">${FL[field]||""}</span>`}<input type="text" inputmode="${field==="r"?"numeric":"decimal"}" autocomplete="off"${ro?" readonly tabindex=\"-1\"":""} id="${esc(key+"-"+field)}" ${attr}="${esc(key)}" data-f="${field}" value="${esc(val??"")}" placeholder="${esc(ph??"")}" aria-label="${FL[field]||field}">${suffix&&attr!=="data-k"?`<span>${suffix}</span>`:""}</label>`;
 }
 function segField(key,field,opts,val,attr="data-seg"){
   const lab=field==="rir"?"RIR":"Velocidad";
@@ -273,27 +284,28 @@ function renderHoy(){
   const P=plan(day), wk=new Date().getDay();
   let h=`<header class="top"><div><div class="label">${fmtDate(todayISO())}${wk===0||wk===6?" · fin de semana":""}</div><h1>${day[0]+day.slice(1).toLowerCase()} · ${P.name}</h1></div></header>`;
   h+=`<div class="daychips" role="group" aria-label="Día del plan">${DAYS.map(d=>`<button class="chipbtn" data-day="${d}" aria-pressed="${d===day}">${DAYSHORT[d]}</button>`).join("")}</div>`;
+  h+=`<div class="formgrid" style="margin-bottom:12px"><span class="small">Fecha de la sesión</span><label class="field"><input type="date" id="sdate" data-sdate="1" value="${esc(draft.sdate||todayISO())}" aria-label="Fecha de la sesión"></label></div>`;
   h+=dbBanner();
   h+=`<div class="banner"><b>Calentamiento.</b> ${day==="MIÉRCOLES"?MOB_LONG:MOB_SHORT} Después, solo 2 series de aproximación en los principales (indicadas en cada ejercicio).</div>`;
   h+=`<div class="stack">`;
   P.lines.forEach((ex,i)=>{h+=EX[ex].kind==="bilbo"?cardBilbo(ex,i+1):EX[ex].kind==="double"?cardDouble(ex,i+1):cardPower(ex,i+1)});
   h+=`</div>`;
-  h+=`<div class="card" style="margin-top:12px"><label class="label" for="notes">Notas / incidencias de la sesión</label><textarea id="notes" data-k="__notes" data-f="t" placeholder="Sueño, molestias, técnica…">${esc(dv("__notes","t",""))}</textarea></div>`;
+  h+=`<div class="card" style="margin-top:12px"><label class="label" for="notes">Notas / incidencias de la sesión</label><textarea id="notes" data-k="${esc(day+"~__notes")}" data-f="t" placeholder="Sueño, molestias, técnica…">${esc(dv(day+"~__notes","t",""))}</textarea></div>`;
   h+=`<div class="savebar"><button class="btn primary" id="save">Guardar sesión y calcular la próxima</button></div>`;
   return h;
 }
 function cardBilbo(ex,n){
-  const b=planBilbo(ex),bw=+dv(ex+"|b","w",b.w??"")||b.w,p=planPost(ex,bw),u=unit(ex);
+  const b=planBilbo(ex),bw=+dv(K(ex,"b"),"w",b.w??"")||b.w,p=planPost(ex,bw),u=unit(ex);
   let h=`<section class="card bilbo"><div class="cardhead"><div><div class="label">${n} · Bilbo · ciclo ${b.cycle} · sesión ${b.cs}</div><h3>${ex}</h3></div>${tagOf(b.status)}</div>`;
   h+=`<div class="presc"><div class="big">${bigW(b.w,u)}</div><div><div class="label">Reps esperadas</div><div class="big" style="font-size:30px">${b.exp?"≈"+b.exp:"30–40"}</div></div></div>`;
   h+=`<div class="why">${esc(b.why)} ${perSide(ex,b.w)?"· "+perSide(ex,b.w):""}</div>`;
   const wu=warmups(ex,b.w);h+=`<div class="warm"><b>Aproximación:</b> ${wu?wu:"2 series progresivas ligeras (×8 y ×5)"}</div>`;
-  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(ex+"|b","w",dv(ex+"|b","w",b.w??""),u,"peso")}${numField(ex+"|b","r",dv(ex+"|b","r",""),"",b.exp?"≈"+b.exp:"")}</div></div>`;
-  h+=`<div class="small muted" style="margin-top:6px">Las cifras en gris son la guía; escribe lo que hayas hecho de verdad (peso y reps, cualquier valor). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
+  h+=`<div class="sets">${setHead(u)}<div class="setrow"><div class="n">B</div>${numField(K(ex,"b"),"w",dv(K(ex,"b"),"w",b.w??""),u,"peso","data-k",b.w!=null&&!unlocked[ex])}${numField(K(ex,"b"),"r",dv(K(ex,"b"),"r",""),"",b.exp?"≈"+b.exp:"")}</div></div>`;
+  h+=`<div class="small muted" style="margin-top:6px">Solo apunta las repeticiones: el peso ya está calculado (si usaste otro, pulsa «Cambiar pesos»). Una sola serie, cada repetición lo más rápida posible, sin fallo absoluto. No hace falta RIR.</div>`;
   h+=`<div class="sub"><div class="cardhead"><div><div class="label">Post-Bilbo · 3×8–12 @RIR 1</div><div class="big" style="font-size:32px"><span id="pw-${esc(ex)}">${p.w??"Bilbo × "+(1+p.pct).toFixed(2)}</span><small>${u}</small></div></div><span class="tag">+${Math.round(p.pct*1000)/10}%</span></div>`;
   h+=`<div class="why">${esc(p.ev)} ${p.w?"Peso = Bilbo × "+(1+p.pct).toFixed(3).replace(/0+$/,"")+" redondeado.":"Se calcula al poner el peso Bilbo."} ${perSide(ex,p.w)?"· "+perSide(ex,p.w):""}</div><div class="sets">${setHead(u)}`;
-  for(let s=1;s<=3;s++){const k=ex+"|p"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"","8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
-  h+=`</div><div class="row" style="margin-top:10px">${restBtn(EX[ex].rest)}${restBtn(EX[ex].postRest)}</div></div></section>`;
+  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",p.w??""),u,"peso","data-k",p.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"","8–12")}${segField(k,"rir",[0,1,2],dv(k,"rir",1))}</div>`}
+  h+=`</div><div class="row" style="margin-top:10px">${restBtn(EX[ex].rest)}${restBtn(EX[ex].postRest)}${b.w!=null?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></div></section>`;
   return h;
 }
 function cardDouble(ex,n){
@@ -302,8 +314,8 @@ function cardDouble(ex,n){
   h+=`<div class="presc"><div class="big">${bigW(d.w,u)}</div><div class="small" style="max-width:60%"><b>Objetivo:</b> ${esc(d.target)}</div></div><div class="why">${esc(d.why)} ${perSide(ex,d.w)?"· "+perSide(ex,d.w):""}</div>`;
   const wu=warmups(ex,d.w);if(E.warm)h+=`<div class="warm"><b>Aproximación:</b> ${wu||"2 series progresivas ligeras (×8 y ×5)"}</div>`;
   h+=`<div class="sets">${setHead(u)}`;
-  for(let s=1;s<=E.sets;s++){const k=ex+"|w"+s;h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"",`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
-  h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}</div></section>`;
+  for(let s=1;s<=E.sets;s++){const k=K(ex,"w"+s);h+=`<div class="setrow"><div class="n">${s}</div>${numField(k,"w",dv(k,"w",d.w??""),u,"peso","data-k",d.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",`${E.min}–${E.max}`)}${segField(k,"rir",[0,1,2,3],dv(k,"rir",1))}</div>`}
+  h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}${d.w!=null?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></section>`;
   return h;
 }
 function cardPower(ex,n){
@@ -312,8 +324,8 @@ function cardPower(ex,n){
   h+=`<div class="presc"><div class="big">${pc?`PC<small>peso corporal</small>`:bigW(d.w,u)}</div></div><div class="why">${esc(d.why)} Califica cada serie: A rápida · B algo más lenta · C lenta (si sale C, para o baja).</div>`;
   const wu=warmups(ex,d.w);if(E.warm)h+=`<div class="warm"><b>Aproximación:</b> ${wu||"2 series ligeras"}</div>`;
   h+=`<div class="sets">${setHead(pc?"corporal":u)}`;
-  for(let s=1;s<=E.sets;s++){const k=ex+"|v"+s;h+=`<div class="setrow"><div class="n">${s}</div>${pc?`<div class="field"><span class="fl">Peso</span><input disabled value="PC" aria-label="Peso corporal"></div>`:numField(k,"w",dv(k,"w",d.w??""),u,"peso")}${numField(k,"r",dv(k,"r",""),"",String(E.reps))}${segField(k,"vel",["A","B","C"],dv(k,"vel",""))}</div>`}
-  h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}</div></section>`;
+  for(let s=1;s<=E.sets;s++){const k=K(ex,"v"+s);h+=`<div class="setrow"><div class="n">${s}</div>${pc?`<div class="field"><span class="fl">Peso</span><input disabled value="PC" aria-label="Peso corporal"></div>`:numField(k,"w",dv(k,"w",d.w??""),u,"peso","data-k",d.w!=null&&!unlocked[ex])}${numField(k,"r",dv(k,"r",""),"",String(E.reps))}${segField(k,"vel",["A","B","C"],dv(k,"vel",""))}</div>`}
+  h+=`</div><div class="row" style="margin-top:10px">${restBtn(E.rest)}${d.w!=null&&!pc?`<button type="button" class="btn small" data-unlock="${esc(ex)}">${unlocked[ex]?"Fijar pesos":"Cambiar pesos"}</button>`:""}</div></section>`;
   return h;
 }
 
@@ -324,28 +336,29 @@ async function saveSession(){
   for(const ex of P.lines){
     const E=EX[ex];
     if(E.kind==="bilbo"){
-      const b=planBilbo(ex),bw=num(dv(ex+"|b","w",b.w)),br=num(dv(ex+"|b","r",""));
+      const b=planBilbo(ex),bw=num(dv(K(ex,"b"),"w",b.w)),br=num(dv(K(ex,"b"),"r",""));
       if(bw!=null&&br!=null)sets.push({ex,type:"bilbo",set:1,w:bw,r:br,exp:b.exp,cycle:b.cycle,cs:b.cs,presc:b.w});
       const p=planPost(ex,bw??b.w);
-      for(let s=1;s<=3;s++){const k=ex+"|p"+s,w=num(dv(k,"w",p.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
-        const pct=bw?Math.round((w/bw-1)*1000)/1000:p.pct;
+      for(let s=1;s<=3;s++){const k=K(ex,"p"+s),w=num(dv(k,"w",p.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
+        const pct=(w===p.w||!bw)?p.pct:Math.round((w/bw-1)*1000)/1000;
         sets.push({ex,type:"post",set:s,w,r,rir:+dv(k,"rir",1),pct,cycle:b.cycle,cs:b.cs,presc:p.w})}
     }else if(E.kind==="double"){
       const d=planDouble(ex);
-      for(let s=1;s<=E.sets;s++){const k=ex+"|w"+s,w=num(dv(k,"w",d.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
+      for(let s=1;s<=E.sets;s++){const k=K(ex,"w"+s),w=num(dv(k,"w",d.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
         sets.push({ex,type:"work",set:s,w,r,rir:+dv(k,"rir",1),presc:d.w})}
     }else{
       const d=planPower(ex);
-      for(let s=1;s<=E.sets;s++){const k=ex+"|v"+s,w=E.impl==="pc"?0:num(dv(k,"w",d.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
+      for(let s=1;s<=E.sets;s++){const k=K(ex,"v"+s),w=E.impl==="pc"?0:num(dv(k,"w",d.w)),r=num(dv(k,"r",""));if(w==null||r==null)continue;
         sets.push({ex,type:"power",set:s,w,r,vel:dv(k,"vel","")||"B",presc:d.w})}
     }
   }
   if(!sets.length){toast("No hay series con peso y repeticiones.");const b=$("#save");if(b)b.disabled=false;return}
   const id="s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  const s={id,date:todayISO(),day,createdAt:Date.now(),sets,notes:dv("__notes","t","")};
+  const s={id,date:draft.sdate||todayISO(),day,createdAt:Date.now(),sets,notes:dv(day+"~__notes","t","")};
   sessions.push(s);LS.set("bilbo.sessions",sessions);
-  draft={date:todayISO(),v:{}};saveDraft();
+  draft={date:todayISO(),v:{}};saveDraft();unlocked={};
   await writeSession(s);
+  dayManual=false;day=defaultDay();
   tab="prog";render();window.scrollTo(0,0);toast("Sesión guardada. Próximas cargas actualizadas.");
 }
 async function writeSession(s){
@@ -510,6 +523,7 @@ async function initCloud(){
     const remote=snap.docs.map(d=>({id:d.id,...d.data()}));
     const ids=new Set(remote.map(s=>s.id)),pend=sessions.filter(s=>s.pending&&!ids.has(s.id));
     sessions=[...remote.map(s=>({...s})),...pend];LS.set("bilbo.sessions",sessions);dbState="ok";
+    if(!dayManual)day=defaultDay();
     if(first){first=false;for(const s of pend)await writeSession(s)}
     safeRender();
   },e=>{dbState="off";safeRender()});
@@ -537,7 +551,8 @@ function render(){
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,label");if(!t)return;
   if(t.dataset.tab){tab=t.dataset.tab;editBuf=null;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
-  if(t.dataset.day){day=t.dataset.day;render();return}
+  if(t.dataset.day){day=t.dataset.day;dayManual=true;render();return}
+  if(t.dataset.unlock){const ex=t.dataset.unlock;unlocked[ex]=!unlocked[ex];render();return}
   if(t.dataset.seg){const k=t.dataset.seg,f=t.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=isNaN(+t.dataset.v)?t.dataset.v:+t.dataset.v;saveDraft();
     t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));return}
   if(t.dataset.rest){startRest(t.dataset.rest);return}
@@ -559,7 +574,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{
   const el=e.target;
   if(el.dataset.k){const k=el.dataset.k,f=el.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=el.value;saveDraft();
-    if(k.endsWith("|b")&&f==="w")updatePost(k.split("|")[0]);
+    if(k.endsWith("|b")&&f==="w")updatePost(k.split("~")[1].split("|")[0]);
     const m=k.match(/^(.*\|[pwv])(\d+)$/);
     if(m&&f==="w"){if(draft.v[k])delete draft.v[k].wAuto;
       for(let n=+m[2]+1;n<=8;n++){const kk=m[1]+n,dk=draft.v[kk];if(dk&&dk.w!==undefined&&!dk.wAuto)break;const inp=document.getElementById(kk+"-w");if(!inp)break;
@@ -567,6 +582,7 @@ document.addEventListener("input",e=>{
       saveDraft()}
     return}
   if(el.dataset.ek){const [id,i]=el.dataset.ek.split("#");const x=editBuf&&editBuf.sets[+i];if(x){x[el.dataset.f]=el.value}return}
+  if(el.dataset.sdate){draft.sdate=el.value;saveDraft();return}
   if(el.dataset.edate){if(editBuf)editBuf.date=el.value;return}
   if(el.dataset.enotes){if(editBuf)editBuf.notes=el.value;return}
   if(el.dataset.inc){const v=num(el.value);if(v!=null&&v>0)cfg.incs[el.dataset.inc]=v;else delete cfg.incs[el.dataset.inc];cfgChanged();return}
@@ -580,9 +596,9 @@ document.addEventListener("change",e=>{
 document.addEventListener("focusout",()=>{setTimeout(()=>{if(renderPending&&!(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName)))render()},0)});
 function updatePost(ex){
   // recalcula el peso post si el usuario cambia el peso Bilbo y aún no tocó los pesos post
-  const bw=num(dv(ex+"|b","w",""));if(bw==null)return;const p=planPost(ex,bw);
+  const bw=num(dv(K(ex,"b"),"w",""));if(bw==null)return;const p=planPost(ex,bw);
   const big=document.getElementById("pw-"+ex);if(big)big.textContent=p.w;
-  for(let s=1;s<=3;s++){const k=ex+"|p"+s;if(draft.v[k]&&draft.v[k].w!==undefined)continue;const inp=document.getElementById(k+"-w");if(inp)inp.value=p.w}
+  for(let s=1;s<=3;s++){const k=K(ex,"p"+s);if(draft.v[k]&&draft.v[k].w!==undefined)continue;const inp=document.getElementById(k+"-w");if(inp)inp.value=p.w}
 }
 render();
 initCloud();
