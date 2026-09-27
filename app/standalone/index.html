@@ -302,7 +302,7 @@ function renderHoy(){
     for(const ex of P.lines){const E=EX[ex];
       if(E.kind==="bilbo"){const b=planBilbo(ex),pp=planPost(ex,b.w),bs=setsOf(ex,"bilbo"),l=bs[bs.length-1];
         h+=`<div><b>${esc(ex)}</b>: Bilbo ${b.w??"lo pones tú"}${b.w?" kg":""}${l?` <span class="muted">(anterior ${l.w}×${l.r})</span>`:""} · post ${pp.w??"—"}${pp.w?" kg":""}</div>`}
-      else{const d=E.kind==="double"?planDouble(ex):planPower(ex);h+=`<div><b>${esc(E.label||ex)}</b>: ${E.impl==="pc"?"peso corporal":(d.w!=null?d.w+" "+unit(ex):"lo pones túcalibrar")}</div>`}}
+      else{const d=E.kind==="double"?planDouble(ex):planPower(ex);h+=`<div><b>${esc(E.label||ex)}</b>: ${E.impl==="pc"?"peso corporal":(d.w!=null?d.w+" "+unit(ex):"lo pones tú")}</div>`}}
     return h+`</div></section>`;
   }
   const P=plan(day),done=sessions.find(x=>x.date===t&&x.day===day);
