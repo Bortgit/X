@@ -1401,7 +1401,7 @@ function payResidenceBooking(){
 function trainingBookingsOnDate(c, date){
   const dow = parseDate(date).getDay(); // 0=domingo ... 1=lunes ... 4=jueves
   const isDiyDay = dow===1 || dow===4;
-  return c.bookingsTraining.filter(b=> b.date===date || (b.recurring && isDiyDay));
+  return c.bookingsTraining.filter(b=> !b.cancelled && (b.date===date || (b.recurring && isDiyDay)));
 }
 function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
 function clientBookingsOnDate(c, date){
@@ -1829,8 +1829,8 @@ function renderAdminStats(){
   const mk = monthKey(S.meta.simDate);
   let revenue = 0, active=0, cancelled=0;
   S.clients.forEach(c=>{
-    c.bookingsTraining.forEach(b=>{ if(monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
-    c.bookingsResidencia.forEach(b=>{ if(monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
+    c.bookingsTraining.forEach(b=>{ if(!b.cancelled && monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
+    c.bookingsResidencia.forEach(b=>{ if(!b.cancelled && monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
     if(c.subscriptionStatus==='active') active++;
     if(c.subscriptionStatus==='cancelled') cancelled++;
   });
@@ -1860,17 +1860,23 @@ function openClientModal(id){
       <div class="kv"><span>Evaluaciones</span><span>${dog.evaluations.length} ${dog.evalReenabled?'(nueva habilitada)':''}</span></div>
       <button class="btn btn-sm" style="margin:4px 0 10px;" ${(dog.evaluations.length===0||dog.evalReenabled)?'disabled':''} onclick="adminReenableEvaluation('${c.id}','${dog.id}')">Habilitar nueva evaluación — ${escapeHtml(dog.name)}</button>`;
   }).join('<hr class="sep">');
-  const trainingHist = c.bookingsTraining.map(b=>{
+  const trainingHist = c.bookingsTraining.length ? c.bookingsTraining.map((b,i)=>{
     const dn = c.dogs.find(d=>d.id===b.dogId);
     const when = b.recurring ? b.schedule : `${humanDate(b.date)} ${b.hour}`;
     const bonoTag = b.bonoTotal>1 ? ` (sesión ${b.bonoIndex}/${b.bonoTotal} del bono)` : '';
     const amountTxt = b.bonoTotal>1 && b.bonoIndex>1 ? 'incluida en el bono' : `${b.paidAmount.toFixed(2)}€`;
-    return `${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''}${bonoTag} (${amountTxt})`;
-  }).join('<br>') || 'Sin reservas';
-  const residHist = c.bookingsResidencia.map(b=>{
+    const right = b.cancelled
+      ? `<span style="color:var(--danger);font-weight:800;font-size:11px;white-space:nowrap;">Cancelada</span>`
+      : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelTrainingBooking('${c.id}',${i})">Cancelar</button>`;
+    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''}${bonoTag} (${amountTxt})</span>${right}</div>`;
+  }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
+  const residHist = c.bookingsResidencia.length ? c.bookingsResidencia.map((b,i)=>{
     const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
-    return `${humanDate(b.checkin)} → ${humanDate(b.checkout)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€)`;
-  }).join('<br>') || 'Sin reservas';
+    const right = b.cancelled
+      ? `<span style="color:var(--danger);font-weight:800;font-size:11px;white-space:nowrap;">Cancelada</span>`
+      : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelResidenceBooking('${c.id}',${i})">Cancelar</button>`;
+    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${humanDate(b.checkin)} → ${humanDate(b.checkout)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€)</span>${right}</div>`;
+  }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
   document.getElementById('clientModalBody').innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
     <div class="kv"><span>Teléfono</span><span>${escapeHtml(c.phone)}</span></div>
@@ -1882,9 +1888,9 @@ function openClientModal(id){
     ${dogsHtml}
     <hr class="sep">
     <h3 style="font-size:13px;">Historial de adiestramiento</h3>
-    <p style="font-size:12px;">${trainingHist}</p>
+    ${trainingHist}
     <h3 style="font-size:13px;">Historial de residencia</h3>
-    <p style="font-size:12px;">${residHist}</p>
+    ${residHist}
     <hr class="sep">
     <h3 style="font-size:13px;">Ajustar XP manualmente</h3>
     <p class="card-sub">Suma, resta o pon a 0 el XP de este cliente (por ejemplo, para corregir un fallo o regalar XP). El cliente recibe una notificación con el cambio.</p>
@@ -1950,6 +1956,31 @@ function adminReenableEvaluation(clientId, dogId){
   dog.evalReenabled = true;
   saveState();
   openClientModal(clientId);
+}
+function adminCancelTrainingBooking(clientId, idx){
+  const c = S.clients.find(x=>x.id===clientId);
+  const b = c.bookingsTraining[idx];
+  if(!b || b.cancelled) return;
+  if(!confirm('¿Cancelar esta reserva? El cliente no puede deshacerlo ni volver a activarla; recibirá un aviso.')) return;
+  b.cancelled = true;
+  b.paid = false;
+  const when = b.recurring ? b.schedule : `${humanDate(b.date)} ${b.hour}`;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva cancelada', body:`Tu adiestrador ha cancelado: ${b.service} (${when}).`, read:false});
+  saveState();
+  openClientModal(clientId);
+  if(S.meta.view==='admin') renderAdminAgenda();
+}
+function adminCancelResidenceBooking(clientId, idx){
+  const c = S.clients.find(x=>x.id===clientId);
+  const b = c.bookingsResidencia[idx];
+  if(!b || b.cancelled) return;
+  if(!confirm('¿Cancelar esta reserva de residencia? El cliente no puede deshacerlo ni volver a activarla; recibirá un aviso.')) return;
+  b.cancelled = true;
+  b.paid = false;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia cancelada', body:`Tu adiestrador ha cancelado la reserva del ${humanDate(b.checkin)} al ${humanDate(b.checkout)}.`, read:false});
+  saveState();
+  openClientModal(clientId);
+  if(S.meta.view==='admin') renderAdminAgenda();
 }
 function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
 
