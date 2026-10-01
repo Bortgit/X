@@ -432,9 +432,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         <div class="header-row"><button class="back-btn" onclick="nav('screenXpServices')">← Volver</button><h2 id="bookingSvcTitle">Reservar</h2></div>
         <div class="screen-pad">
           <div id="trainingDogChoice"></div>
-          <p class="card-sub">Elige un día y una hora disponibles.</p>
           <div class="daygrid" id="trainingDayGrid"></div>
           <div class="hour-row" id="trainingHourRow"></div>
+          <div id="trainingSlotsSummary"></div>
           <div class="pricebox" id="trainingPricebox"></div>
           <button class="btn" id="trainingPayBtn" onclick="payTrainingBooking()" disabled>Reservar y pagar (simulado)</button>
         </div>
@@ -641,12 +641,12 @@ const RESID_PRICE_FIRST_DOG = 20; // €/noche
 const RESID_PRICE_SECOND_DOG = 10; // €/noche, solo si se reserva junto al primero
 
 const SERVICES = [
-  {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30},
-  {id:'bono2', name:'Bono 2 sesiones', info:'2 sesiones de adiestramiento', price:50},
-  {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento', price:80},
+  {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30, sessionsCount:1},
+  {id:'bono2', name:'Bono 2 sesiones', info:'2 sesiones de adiestramiento, elige día y hora de cada una', price:50, sessionsCount:2},
+  {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento, elige día y hora de cada una', price:80, sessionsCount:4},
   {id:'diyg', name:'DIY grupal', info:'Mensual · lunes y jueves, grupo de 18:00–19:00 o 19:00–20:00 (máx. 4 perros por grupo)', price:100, fixedSchedule:true},
   {id:'diyi', name:'DIY individual', info:'Mensual · lunes y jueves de 17:00 a 18:00', price:150, fixedSchedule:true},
-  {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true},
+  {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true, sessionsCount:1},
 ];
 
 const BASICO_SESSIONS = [
@@ -1099,10 +1099,11 @@ function chooseService(id){
   selectedService = SERVICES.find(s=>s.id===id);
   nav(selectedService.fixedSchedule ? 'screenDiyBooking' : 'screenXpBooking');
 }
-let trainingSel = {date:null, hour:null, dogId:null};
+let trainingSel = {dogId:null, pendingDate:null, slots:[]};
+function trainingSessionsNeeded(){ return selectedService.sessionsCount || 1; }
 function renderXpBooking(){
   const c = activeClient();
-  trainingSel = {date:null, hour:null, dogId: selectedDog(c).id};
+  trainingSel = {dogId: selectedDog(c).id, pendingDate:null, slots:[]};
   document.getElementById('bookingSvcTitle').textContent = 'Reservar: ' + selectedService.name;
 
   const dogBox = document.getElementById('trainingDogChoice');
@@ -1114,57 +1115,103 @@ function renderXpBooking(){
     dogBox.innerHTML = '';
   }
 
-  const grid = document.getElementById('trainingDayGrid');
-  let html='';
-  for(let i=0;i<21;i++){
-    const d = addDays(S.meta.simDate, i);
-    const closed = S.admin.calendarClosures.training[d]==='full';
-    html += `<div class="daycell ${closed?'closed':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
-  }
-  grid.innerHTML = html;
+  renderTrainingDayGrid();
   document.getElementById('trainingHourRow').innerHTML='';
-  document.getElementById('trainingPricebox').innerHTML='';
-  document.getElementById('trainingPayBtn').disabled = true;
+  renderTrainingSlotsSummary();
+  updateTrainingPricebox();
 }
 function pickTrainingDog(id){
   trainingSel.dogId = id;
   document.querySelectorAll('#trainingDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.dog===id));
 }
+function renderTrainingDayGrid(){
+  const grid = document.getElementById('trainingDayGrid');
+  let html='';
+  for(let i=0;i<21;i++){
+    const d = addDays(S.meta.simDate, i);
+    const closed = S.admin.calendarClosures.training[d]==='full';
+    const hasSlot = trainingSel.slots.some(s=>s.date===d);
+    const isPending = trainingSel.pendingDate===d;
+    html += `<div class="daycell ${closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+  }
+  grid.innerHTML = html;
+}
 function pickTrainingDay(d){
-  trainingSel.date = d; trainingSel.hour=null;
-  document.querySelectorAll('#trainingDayGrid .daycell').forEach(el=>el.classList.toggle('selected', el.dataset.date===d));
+  trainingSel.pendingDate = d;
+  renderTrainingDayGrid();
   const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
+  const takenHours = trainingSel.slots.filter(s=>s.date===d).map(s=>s.hour);
   document.getElementById('trainingHourRow').innerHTML = FIXED_HOURS.map(h=>{
-    const closed = closedHours.includes(h);
+    const closed = closedHours.includes(h) || takenHours.includes(h);
     return `<div class="hour-chip ${closed?'closed':''}" onclick="${closed?'':`pickTrainingHour('${h}')`}">${h}</div>`;
   }).join('');
-  document.getElementById('trainingPricebox').innerHTML='';
-  document.getElementById('trainingPayBtn').disabled = true;
 }
 function pickTrainingHour(h){
-  trainingSel.hour = h;
-  document.querySelectorAll('#trainingHourRow .hour-chip').forEach(el=>el.classList.toggle('selected', el.textContent===h));
+  const needed = trainingSessionsNeeded();
+  if(trainingSel.slots.length>=needed){
+    alert(`Ya has elegido las ${needed} ${needed>1?'sesiones':'sesión'} de esta reserva. Quita alguna si quieres cambiarla.`);
+    return;
+  }
+  trainingSel.slots.push({date:trainingSel.pendingDate, hour:h});
+  renderTrainingDayGrid();
+  pickTrainingDay(trainingSel.pendingDate);
+  renderTrainingSlotsSummary();
+  updateTrainingPricebox();
+}
+function removeTrainingSlot(i){
+  trainingSel.slots.splice(i,1);
+  renderTrainingDayGrid();
+  if(trainingSel.pendingDate) pickTrainingDay(trainingSel.pendingDate);
+  renderTrainingSlotsSummary();
+  updateTrainingPricebox();
+}
+function renderTrainingSlotsSummary(){
+  const needed = trainingSessionsNeeded();
+  const box = document.getElementById('trainingSlotsSummary');
+  const word = needed>1 ? 'sesiones' : 'sesión';
+  if(!trainingSel.slots.length){
+    box.innerHTML = `<p class="card-sub">Elige ${needed} ${word} en el calendario${needed>1?' (pueden ser en días distintos)':''}.</p>`;
+    return;
+  }
+  box.innerHTML = `<p class="card-sub">Sesiones elegidas (${trainingSel.slots.length}/${needed}):</p>` +
+    trainingSel.slots.map((s,i)=>`
+      <div class="svc-item">
+        <div>${humanDate(s.date)} · ${s.hour}</div>
+        <button class="btn btn-sm btn-outline" style="width:auto;padding:6px 10px;" onclick="removeTrainingSlot(${i})">Quitar</button>
+      </div>`).join('');
+}
+function updateTrainingPricebox(){
   const c = activeClient();
+  const needed = trainingSessionsNeeded();
   const discount = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
   const final = (selectedService.price - discount).toFixed(2);
   document.getElementById('trainingPricebox').innerHTML = `
     <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
     <div class="line"><span>Descuento XP mensual</span><span>-${discount.toFixed(2)}€</span></div>
     <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>`;
-  document.getElementById('trainingPayBtn').disabled = false;
+  document.getElementById('trainingPayBtn').disabled = trainingSel.slots.length !== needed;
 }
 function payTrainingBooking(){
   const c = activeClient();
+  const needed = trainingSessionsNeeded();
+  if(trainingSel.slots.length !== needed) return;
   const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
   const usedXp = Math.round(discountEur/XP_TO_EUR);
   c.xpMonthly -= usedXp;
-  c.bookingsTraining.push({
-    date:trainingSel.date, hour:trainingSel.hour, service:selectedService.name, dogId:trainingSel.dogId,
-    price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
-    paid:true, createdSimDate:S.meta.simDate,
+  const bonoId = needed>1 ? 'bono'+Date.now() : null;
+  trainingSel.slots.forEach((slot,i)=>{
+    c.bookingsTraining.push({
+      date:slot.date, hour:slot.hour, service:selectedService.name, dogId:trainingSel.dogId,
+      price: i===0 ? selectedService.price : 0,
+      discount: i===0 ? discountEur : 0,
+      paidAmount: i===0 ? selectedService.price-discountEur : 0,
+      paid:true, createdSimDate:S.meta.simDate,
+      bonoId, bonoIndex:i+1, bonoTotal:needed,
+    });
   });
   const waNote = selectedService.isVideocall ? ` Recibirás la videollamada por WhatsApp a esa hora.` : '';
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" para el ${humanDate(trainingSel.date)} a las ${trainingSel.hour} ha sido confirmada.${waNote}`, read:false});
+  const datesTxt = trainingSel.slots.map(s=>`${humanDate(s.date)} ${s.hour}`).join(', ');
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" (${datesTxt}) ha sido confirmada.${waNote}`, read:false});
   saveState();
   alert('¡Reserva confirmada y pagada (simulado)!');
   goHome();
@@ -1816,7 +1863,9 @@ function openClientModal(id){
   const trainingHist = c.bookingsTraining.map(b=>{
     const dn = c.dogs.find(d=>d.id===b.dogId);
     const when = b.recurring ? b.schedule : `${humanDate(b.date)} ${b.hour}`;
-    return `${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''} (${b.paidAmount.toFixed(2)}€)`;
+    const bonoTag = b.bonoTotal>1 ? ` (sesión ${b.bonoIndex}/${b.bonoTotal} del bono)` : '';
+    const amountTxt = b.bonoTotal>1 && b.bonoIndex>1 ? 'incluida en el bono' : `${b.paidAmount.toFixed(2)}€`;
+    return `${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''}${bonoTag} (${amountTxt})`;
   }).join('<br>') || 'Sin reservas';
   const residHist = c.bookingsResidencia.map(b=>{
     const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
