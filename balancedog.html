@@ -386,6 +386,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
     <button onclick="debugResetState()">Reiniciar datos</button>
   </div>
 </div>
+<div id="clickTrace" style="width:390px;max-width:100%;margin:0 auto 14px;background:#0b2a1c;color:#9ef0c0;border-radius:12px;padding:8px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-word;">(trazas de navegación aparecerán aquí)</div>
 
 <div class="app-wrap">
   <div class="phone" id="clientAppWrap">
@@ -932,6 +933,7 @@ function showToast(message, opts){
 function reportAppError(e, context){
   const msg = (e && e.message) ? e.message : String(e);
   console.error('App error', context, e);
+  if(typeof trace==='function') trace('ERROR global '+(context||'')+': '+msg);
   showToast('⚠️ Error ' + (context||'') + ': ' + msg, {type:'warn', duration:7000});
 }
 function showXpReward(amount, subtitle){
@@ -1112,18 +1114,37 @@ function computePetStateDisplay(c, dog){
 
 /* ---------------- navigation ---------------- */
 let navCtx = {};
+function trace(msg){
+  const el = document.getElementById('clickTrace');
+  if(!el) return;
+  const t = new Date().toISOString().slice(11,23);
+  const lines = (el.dataset.lines ? el.dataset.lines.split('\n') : []);
+  lines.push(`[${t}] ${msg}`);
+  while(lines.length>8) lines.shift();
+  el.dataset.lines = lines.join('\n');
+  el.textContent = lines.join('\n');
+}
 function nav(id, ctx){
+  trace('nav("'+id+'") llamada');
   try{
     navCtx = ctx || {};
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     const screenEl = document.getElementById(id);
     if(!screenEl) throw new Error('No existe la pantalla "'+id+'"');
     screenEl.classList.add('active');
+    trace('pantalla "'+id+'" activada');
     const scroller = document.getElementById('phoneScreen');
     if(scroller) scroller.scrollTop = 0;
     const renderer = RENDERERS[id];
-    if(renderer) renderer();
+    if(renderer){
+      const t0 = performance.now();
+      renderer();
+      trace('render "'+id+'" OK en '+(performance.now()-t0).toFixed(0)+'ms');
+    } else {
+      trace('sin renderer para "'+id+'"');
+    }
   }catch(e){
+    trace('ERROR en "'+id+'": '+(e&&e.message?e.message:e));
     console.error('Error al abrir la pantalla', id, e);
     reportAppError(e, 'al abrir la pantalla "'+id+'"');
   }
@@ -1559,7 +1580,7 @@ function payDiyBooking(){
 }
 
 /* ---------------- HUCHA / residencia ---------------- */
-function openResidenceFromBank(){ nav('screenHuchaServices'); }
+function openResidenceFromBank(){ trace('tarjeta Hucha de XP pulsada'); nav('screenHuchaServices'); }
 function renderHuchaServices(){
   const c = activeClient();
   document.getElementById('huchaServicesBankVal').textContent = c.xpBank + ' XP';
