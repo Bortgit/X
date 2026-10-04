@@ -158,7 +158,7 @@ img{max-width:100%;}
 .card-title{font-weight:800;font-size:15.5px;margin-bottom:4px;}
 .card-sub{font-size:12.5px;color:var(--text-soft);margin-bottom:8px;}
 .card-cta{font-size:12px;font-weight:700;color:var(--accent-dark);}
-.xp-value{font-size:26px;font-weight:800;color:var(--accent-dark);}
+.xp-value{font-size:34px;font-weight:800;color:var(--accent-dark);letter-spacing:-.5px;text-shadow:0 1px 0 rgba(255,255,255,.4);}
 .card-icon-row{display:flex;align-items:center;justify-content:space-between;}
 .card-icon{font-size:30px;}
 
@@ -193,7 +193,46 @@ img{max-width:100%;}
 .course-tile.locked{opacity:.65;cursor:not-allowed;text-align:center;}
 .course-tile .name{font-weight:800;font-size:12.5px;color:var(--accent-dark);margin-bottom:2px;}
 .course-tile .info{font-size:11px;color:var(--text-soft);line-height:1.3;}
-.course-tile .lock-ic{font-size:20px;display:block;margin-bottom:4px;text-align:center;}
+.course-tile .lock-ic{font-size:20px;display:block;margin-bottom:4px;text-align:center;animation:lockPulse 2.4s ease-in-out infinite;}
+@keyframes lockPulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+.course-tile.completed-state{
+  background:linear-gradient(135deg,#DCEBDC,var(--card));border:1px solid #bcd9bc;text-align:center;
+}
+.progress-bar{height:6px;border-radius:4px;background:var(--accent-light);overflow:hidden;margin-top:7px;}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .5s ease;}
+
+/* ---------- streak ---------- */
+.streak-chip{
+  display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent-dark);
+  font-weight:800;font-size:12px;padding:5px 12px;border-radius:20px;margin:0 18px 10px;
+}
+
+/* ---------- toasts ---------- */
+#toastHost{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;
+  width:min(320px,calc(100vw - 32px));
+}
+.toast{
+  background:#2b241c;color:#fdf8f0;padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;gap:8px;
+  opacity:0;transform:translateY(12px);transition:opacity .25s ease, transform .25s ease;
+  width:100%;
+}
+.toast.warn{background:#5c3420;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast .ic{font-size:16px;flex-shrink:0;}
+
+/* ---------- xp reward overlay ---------- */
+#xpRewardOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:250;}
+.xp-reward-badge{
+  background:linear-gradient(135deg,#F3D27A,#E0A83E);color:#5b3d12;font-weight:800;
+  padding:20px 30px;border-radius:26px;font-size:26px;box-shadow:0 20px 50px rgba(0,0,0,.4);
+  opacity:0;transform:scale(.6) translateY(10px);transition:opacity .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+  display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;
+}
+.xp-reward-badge.show{opacity:1;transform:scale(1) translateY(0);}
+.xp-reward-badge .sub{font-size:13px;font-weight:700;color:#7a5a1e;}
 
 /* ---------- misc components ---------- */
 .placeholder-img{
@@ -358,6 +397,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="greet" id="homeGreeting">Hola, ...</div>
           <button class="bell-btn" onclick="nav('screenNotifications')">🔔<span class="bell-badge hidden" id="bellBadge">0</span></button>
         </div>
+
+        <div class="streak-chip hidden" id="streakChip">🔥 <span id="streakVal">0</span> días seguidos</div>
 
         <div class="dog-switcher hidden" id="dogSwitcher"></div>
 
@@ -623,6 +664,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
   <div class="modal-box" id="clientModalBody"></div>
 </div>
 
+<div id="toastHost"></div>
+<div id="xpRewardOverlay"></div>
+
 <script>
 /* =========================================================================
    BALANCEDOG — PROTOTIPO FUNCIONAL (HTML/CSS/JS, sin backend, localStorage)
@@ -722,6 +766,31 @@ function joinNames(arr){
 }
 function uid(prefix){ return prefix + Math.random().toString(36).slice(2,9); }
 
+/* ---------------- feedback: toasts + xp reward ---------------- */
+function showToast(message, opts){
+  opts = opts || {};
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast' + (opts.type==='warn' ? ' warn' : '');
+  el.innerHTML = `<span class="ic">${opts.icon || (opts.type==='warn'?'⚠️':'✅')}</span><span>${escapeHtml(message)}</span>`;
+  host.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.remove(), 300);
+  }, opts.duration || 2800);
+}
+function showXpReward(amount, subtitle){
+  const host = document.getElementById('xpRewardOverlay');
+  host.innerHTML = `<div class="xp-reward-badge" id="xpRewardBadge">✨ +${amount} XP${subtitle?`<span class="sub">${escapeHtml(subtitle)}</span>`:''}</div>`;
+  const badge = document.getElementById('xpRewardBadge');
+  requestAnimationFrame(()=>badge.classList.add('show'));
+  setTimeout(()=>{
+    badge.classList.remove('show');
+    setTimeout(()=>{ host.innerHTML=''; }, 300);
+  }, 1500);
+}
+
 /* ---------------- default state ---------------- */
 function makeDog(over){
   const base = {
@@ -752,6 +821,7 @@ function makeClient(over){
     subscriptionStatus:'active',
     lastEntryDate:'2026-09-15',
     lastXpGrantedDate:'',
+    streak:1,
     xpMonthly:150, xpMonthlyMonth:'2026-09',
     xpBank:320,
     lecturaClaimedIds:[],
@@ -884,6 +954,10 @@ function nav(id, ctx){
 }
 function goHome(){
   const c = activeClient();
+  const diff = daysBetween(c.lastEntryDate, S.meta.simDate);
+  if(diff===1) c.streak = (c.streak||0) + 1;
+  else if(diff>=2 || diff<0) c.streak = 1;
+  else if(diff===0 && !c.streak) c.streak = 1;
   c.lastEntryDate = S.meta.simDate;
   saveState();
   nav('screenHome');
@@ -899,6 +973,14 @@ function renderHome(){
   const unread = c.notifications.filter(n=>!n.read).length;
   const badge = document.getElementById('bellBadge');
   if(unread>0){ badge.textContent=unread; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
+
+  const streakChip = document.getElementById('streakChip');
+  if((c.streak||0) >= 2){
+    streakChip.classList.remove('hidden');
+    document.getElementById('streakVal').textContent = c.streak;
+  } else {
+    streakChip.classList.add('hidden');
+  }
 
   const switcher = document.getElementById('dogSwitcher');
   if(c.dogs.length>1){
@@ -937,30 +1019,34 @@ function renderCourseTile(key){
   if(key==='conducta'){
     const unlocked = dog.courses.basico.completed;
     if(!unlocked){
-      return `<div class="tile course-tile locked"><span class="lock-ic">🔒</span><div class="info">Supera el adiestramiento básico para desbloquear</div></div>`;
+      return `<div class="course-tile locked"><div class="name" style="opacity:.5;">🧩 Conducta</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
     }
     const active = dog.behaviorProblems.find(b=>b.id===dog.activeBehaviorId);
-    let info;
-    if(active) info = `${escapeHtml(active.name)}<br>Sesión ${active.currentSession} de ${active.totalSessions}`;
-    else info = 'Elige un problema de conducta';
+    let info, bar='';
+    if(active){
+      info = `${escapeHtml(active.name)}<br>Sesión ${active.currentSession} de ${active.totalSessions}`;
+      const pct = Math.round(((active.currentSession-1)/active.totalSessions)*100);
+      bar = `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`;
+    } else info = 'Elige un problema de conducta';
     if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
-    return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">🧩 Conducta</div><div class="info">${info}</div></button>`;
+    return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">🧩 Conducta</div><div class="info">${info}</div>${bar}</button>`;
   }
   const course = dog.courses[key];
   const total = course.totalSessions;
   const label = key==='basico' ? '🎯 Básico' : '🚀 Avanzado';
   if(key==='avanzado' && !course.unlocked){
-    return `<div class="tile course-tile locked"><span class="lock-ic">🔒</span><div class="info">Supera el adiestramiento básico para desbloquear</div></div>`;
+    return `<div class="course-tile locked"><div class="name" style="opacity:.5;">${label}</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
   }
   if(course.completed){
-    return `<div class="course-tile locked"><div class="name">${label}</div><div class="info">¡Curso completado! 🎓</div></div>`;
+    return `<div class="course-tile completed-state"><div class="name">${label}</div><div class="info">¡Curso completado! 🎓</div></div>`;
   }
   const sessions = key==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
   const exName = sessions[course.currentSession-1].name;
   let info = `Sesión ${course.currentSession} de ${total} — ${escapeHtml(exName)}`;
   if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
   else info += '<br>Toca para realizar la siguiente sesión';
-  return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${label}</div><div class="info">${info}</div></button>`;
+  const pct = Math.round(((course.currentSession-1)/total)*100);
+  return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${label}</div><div class="info">${info}</div><div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div></button>`;
 }
 
 function openCourseSession(key){
@@ -1040,9 +1126,11 @@ function completeSession(result){
   }
   dog._petTemp = {key:petTemp, consumed:false};
   saveState();
-  alert(grantXp
-    ? '¡Sesión completada! Has ganado 25 XP.'
-    : '¡Sesión completada! Hoy ya se sumó el XP diario de la cuenta con otro perro, así que esta sesión no da XP extra (pero sí avanza el curso).');
+  if(grantXp){
+    showXpReward(25, petTemp==='graduado' ? '¡Curso superado!' : 'Sesión completada');
+  } else {
+    showToast('Sesión completada — hoy ya se repartió el XP de la cuenta con otro perro', {icon:'🐾'});
+  }
   goHome();
 }
 
@@ -1069,9 +1157,9 @@ function selectBehavior(id){
   const c = activeClient();
   const dog = selectedDog(c);
   const bp = dog.behaviorProblems.find(b=>b.id===id);
-  if(bp.status==='completed'){ alert('Este problema de conducta ya está completado.'); return; }
+  if(bp.status==='completed'){ showToast('Este problema de conducta ya está completado.', {type:'warn'}); return; }
   if(dog.activeBehaviorId && dog.activeBehaviorId!==id){
-    alert('Este perro ya tiene un problema de conducta en curso. Termina todas sus sesiones antes de elegir otro.');
+    showToast('Este perro ya tiene un problema de conducta en curso. Termina todas sus sesiones antes de elegir otro.', {type:'warn'});
     return;
   }
   if(!dog.activeBehaviorId){ dog.activeBehaviorId=id; bp.status='in_progress'; saveState(); }
@@ -1149,7 +1237,7 @@ function pickTrainingDay(d){
 function pickTrainingHour(h){
   const needed = trainingSessionsNeeded();
   if(trainingSel.slots.length>=needed){
-    alert(`Ya has elegido las ${needed} ${needed>1?'sesiones':'sesión'} de esta reserva. Quita alguna si quieres cambiarla.`);
+    showToast(`Ya has elegido las ${needed} ${needed>1?'sesiones':'sesión'} de esta reserva. Quita alguna si quieres cambiarla.`, {type:'warn'});
     return;
   }
   trainingSel.slots.push({date:trainingSel.pendingDate, hour:h});
@@ -1213,7 +1301,7 @@ function payTrainingBooking(){
   const datesTxt = trainingSel.slots.map(s=>`${humanDate(s.date)} ${s.hour}`).join(', ');
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" (${datesTxt}) ha sido confirmada.${waNote}`, read:false});
   saveState();
-  alert('¡Reserva confirmada y pagada (simulado)!');
+  showToast('¡Reserva confirmada y pagada!', {icon:'📅'});
   goHome();
 }
 
@@ -1293,7 +1381,7 @@ function payDiyBooking(){
   const dogName = c.dogs.find(d=>d.id===diySel.dogId).name;
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Suscripción DIY confirmada', body:`${selectedService.name} para ${dogName}: ${schedule}.`, read:false});
   saveState();
-  alert('¡Suscripción DIY confirmada y pagada (simulado)!');
+  showToast('¡Suscripción DIY confirmada y pagada!', {icon:'🔁'});
   goHome();
 }
 
@@ -1393,7 +1481,7 @@ function payResidenceBooking(){
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia confirmada', body:`${dogNames}: del ${humanDate(b.checkin)} al ${humanDate(b.checkout)}.`, read:false});
   pendingResidBooking = null;
   saveState();
-  alert('¡Reserva de residencia confirmada y pagada (simulado)! Tu hucha de XP se ha puesto a 0.');
+  showToast('¡Reserva de residencia confirmada! Tu hucha se ha puesto a 0.', {icon:'🏠'});
   goHome();
 }
 
@@ -1565,7 +1653,7 @@ function claimReading(){
   const dog = selectedDog(c);
   dog._petTemp = {key:'graduado', consumed:false};
   saveState();
-  alert(`¡Has ganado ${bonus} XP para tu hucha!`);
+  showXpReward(bonus, 'Para tu hucha');
   renderLectura();
 }
 
@@ -1606,7 +1694,7 @@ function attemptEvaluacion(dogId){
   const c = activeClient();
   const dog = c.dogs.find(d=>d.id===dogId);
   if(!canDoEvaluation(dog)){
-    alert('Ya se completó la evaluación inicial de este perro. Si tu adiestrador necesita que la repitas, puede habilitarla de nuevo desde el panel de administrador.');
+    showToast('Ya se completó la evaluación inicial de este perro. Tu adiestrador puede habilitarla de nuevo si hace falta.', {type:'warn'});
     return;
   }
   nav('screenEvaluacion', {dogId});
@@ -1623,7 +1711,7 @@ function saveProfile(){
     dog.notes = document.getElementById(`pfDogNotes_${i}`).value;
   });
   saveState();
-  alert('Datos guardados.');
+  showToast('Datos guardados', {icon:'💾'});
   renderPerfil();
 }
 function unsubscribe(){
@@ -1642,9 +1730,9 @@ function renderAddDog(){
 }
 function submitAddDog(){
   const c = activeClient();
-  if(c.dogs.length>=MAX_DOGS){ alert(`Ya tienes el máximo de ${MAX_DOGS} perros permitido por tu suscripción.`); return; }
+  if(c.dogs.length>=MAX_DOGS){ showToast(`Ya tienes el máximo de ${MAX_DOGS} perros permitido por tu suscripción.`, {type:'warn'}); return; }
   const name = document.getElementById('addDogName').value.trim();
-  if(!name){ alert('Escribe el nombre del perro.'); return; }
+  if(!name){ showToast('Escribe el nombre del perro.', {type:'warn'}); return; }
   const dog = makeDog({
     name,
     breed: document.getElementById('addDogBreed').value,
@@ -1653,7 +1741,7 @@ function submitAddDog(){
   c.dogs.push(dog);
   c.selectedDogId = dog.id;
   saveState();
-  alert('¡Perro añadido! Ya puedes empezar su curso básico.');
+  showToast('¡Perro añadido! Ya puedes empezar su curso básico.', {icon:'🐶'});
   nav('screenPerfil');
 }
 
@@ -1674,7 +1762,7 @@ function submitEvaluation(){
   dog.evaluations.push({date:S.meta.simDate});
   dog.evalReenabled = false;
   saveState();
-  alert('Evaluación enviada. Gracias.');
+  showToast('Evaluación enviada. Gracias.', {icon:'📝'});
   nav('screenPerfil');
 }
 
@@ -1683,7 +1771,7 @@ function submitOnboarding(){
   const c = activeClient();
   const name = document.getElementById('obName').value.trim();
   const dogName = document.getElementById('obDogName').value.trim();
-  if(!name || !dogName){ alert('Completa al menos tu nombre y el de tu perro.'); return; }
+  if(!name || !dogName){ showToast('Completa al menos tu nombre y el de tu perro.', {type:'warn'}); return; }
   c.name = name;
   c.phone = document.getElementById('obPhone').value;
   c.address = document.getElementById('obAddress').value;
@@ -1731,13 +1819,13 @@ function renderAdmin(){
 function adminUploadReading(){
   const input = document.getElementById('adminReadingFile');
   const file = input.files[0];
-  if(!file){ alert('Selecciona un archivo primero.'); return; }
+  if(!file){ showToast('Selecciona un archivo primero.', {type:'warn'}); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     S.monthlyReading = {id:'r'+Date.now(), title:'Lectura de '+humanDate(S.meta.simDate), uploadedDate:S.meta.simDate, dataUrl:e.target.result, mime:file.type};
     saveState();
     renderAdmin();
-    alert('Lectura mensual actualizada.');
+    showToast('Lectura mensual actualizada.', {icon:'📖'});
   };
   reader.readAsDataURL(file);
 }
@@ -1762,12 +1850,12 @@ function adminHideExtraForm(){
 function adminAddExtra(){
   const title = document.getElementById('adminExtraTitle').value.trim();
   const desc = document.getElementById('adminExtraDesc').value.trim();
-  if(!title || !desc){ alert('Escribe un título y una descripción.'); return; }
+  if(!title || !desc){ showToast('Escribe un título y una descripción.', {type:'warn'}); return; }
   S.extraContent.push({id:'ex'+Date.now(), title, desc, emoji:'✨'});
   saveState();
   adminHideExtraForm();
   renderAdminExtra();
-  alert('Contenido extra añadido. Ya está visible para todos los clientes.');
+  showToast('Contenido extra añadido. Ya está visible para todos los clientes.', {icon:'✨'});
 }
 function adminDeleteExtra(i){
   if(!confirm('¿Eliminar este contenido extra? Desaparecerá para todos los clientes.')) return;
@@ -1929,7 +2017,7 @@ function notifyXpAdjustment(c, field, delta){
 function adminAdjustXp(clientId, field, rawAmount){
   const c = S.clients.find(x=>x.id===clientId);
   const amount = parseInt(rawAmount, 10);
-  if(!amount || isNaN(amount)){ alert('Introduce una cantidad distinta de 0 (puede ser negativa).'); return; }
+  if(!amount || isNaN(amount)){ showToast('Introduce una cantidad distinta de 0 (puede ser negativa).', {type:'warn'}); return; }
   const before = c[field];
   c[field] = Math.max(0, before + amount);
   const actualDelta = c[field] - before;
