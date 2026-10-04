@@ -1687,7 +1687,7 @@ function payResidenceBooking(){
 }
 
 let guarderiaDogSelection = null; // dogId o 'both'
-let guarderiaSelectedMonday = null;
+let guarderiaSelectedWeeks = []; // array de fechas (lunes) seleccionadas
 let pendingGuarderiaBooking = null;
 function guarderiaUsableDaysForWeek(monday){
   const today = S.meta.simDate;
@@ -1724,7 +1724,7 @@ function renderGuarderia(){
     guarderiaDogSelection = c.dogs[0].id;
     box.innerHTML = '';
   }
-  guarderiaSelectedMonday = null;
+  guarderiaSelectedWeeks = [];
   renderGuarderiaDayGrid();
   renderGuarderiaResult();
 }
@@ -1747,7 +1747,7 @@ function renderGuarderiaDayGrid(){
     const usable = guarderiaUsableDaysForWeek(monday);
     const lost = guarderiaLostDaysForWeek(monday);
     const disabled = usable.length===0;
-    const selected = !disabled && guarderiaSelectedMonday===monday;
+    const selected = !disabled && guarderiaSelectedWeeks.includes(monday);
     const dayBadges = [0,1,2,3,4].map(i=>{
       const d = addDays(monday,i);
       const isPast = lost.includes(d);
@@ -1760,37 +1760,46 @@ function renderGuarderiaDayGrid(){
   }).join('');
 }
 function pickGuarderiaWeek(d){
-  guarderiaSelectedMonday = mondayOfWeek(d);
+  const monday = mondayOfWeek(d);
+  const idx = guarderiaSelectedWeeks.indexOf(monday);
+  if(idx>=0) guarderiaSelectedWeeks.splice(idx,1);
+  else guarderiaSelectedWeeks.push(monday);
   renderGuarderiaDayGrid();
   renderGuarderiaResult();
 }
 function renderGuarderiaResult(){
   const c = activeClient();
   const box = document.getElementById('guarderiaResult');
-  if(!guarderiaSelectedMonday){
+  if(!guarderiaSelectedWeeks.length){
     pendingGuarderiaBooking = null;
-    box.innerHTML = `<div class="note-box">Elige una semana en el calendario.</div>`;
+    box.innerHTML = `<div class="note-box">Elige una o varias semanas en el calendario.</div>`;
     return;
   }
-  const monday = guarderiaSelectedMonday;
-  const friday = addDays(monday,4);
-  const lost = guarderiaLostDaysForWeek(monday);
   const dogIds = guarderiaDogSelection==='both' ? c.dogs.map(d=>d.id) : [guarderiaDogSelection];
-  const total = dogIds.length * GUARDERIA_PRICE_PER_DOG;
+  const pricePerWeek = dogIds.length * GUARDERIA_PRICE_PER_DOG;
+  const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
+  const sortedWeeks = [...guarderiaSelectedWeeks].sort();
+  const weekInfos = sortedWeeks.map(monday=>{
+    const friday = addDays(monday,4);
+    const lost = guarderiaLostDaysForWeek(monday);
+    const serviceStart = guarderiaUsableDaysForWeek(monday)[0];
+    return {monday, friday, lost, serviceStart, price:pricePerWeek};
+  });
+  const total = weekInfos.length * pricePerWeek;
   const discount = Math.min(c.xpBank*XP_TO_EUR, total);
   const final = (total-discount).toFixed(2);
-  const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
-  const serviceStart = guarderiaUsableDaysForWeek(monday)[0];
-  pendingGuarderiaBooking = {weekStart:monday, weekEnd:friday, serviceStart, dogIds, total, discount};
-  const lostNote = lost.length
-    ? `<div class="note-box">Esta semana ya ha empezado: se dan por perdidos ${lost.map(humanDate).join(' y ')}. El servicio empezaría el ${humanDate(serviceStart)}.</div>`
-    : '';
+  pendingGuarderiaBooking = {weeks:weekInfos, dogIds, total, discount};
+  const lostNotes = weekInfos.filter(w=>w.lost.length).map(w=>
+    `<div class="note-box">Semana del ${humanDate(w.monday)}: ya ha empezado, se dan por perdidos ${w.lost.map(humanDate).join(' y ')}. El servicio de esa semana empezaría el ${humanDate(w.serviceStart)}.</div>`
+  ).join('');
+  const weekLines = weekInfos.map(w=>
+    `<div class="line"><span>Semana del ${humanDate(w.monday)} al ${humanDate(w.friday)}</span><span>${w.price.toFixed(2)}€</span></div>`
+  ).join('');
   box.innerHTML = `
-    ${lostNote}
+    ${lostNotes}
     <div class="pricebox">
-      <div class="line"><span>Semana</span><span>${humanDate(monday)} → ${humanDate(friday)}</span></div>
       <div class="line"><span>Perro(s): ${escapeHtml(dogNames)}</span><span></span></div>
-      <div class="line"><span>${dogIds.length} perro(s) x ${GUARDERIA_PRICE_PER_DOG}€/semana</span><span>${total.toFixed(2)}€</span></div>
+      ${weekLines}
       <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
       <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
     </div>
@@ -1799,20 +1808,26 @@ function renderGuarderiaResult(){
 function payGuarderiaBooking(){
   const c = activeClient();
   const b = pendingGuarderiaBooking;
-  if(!b) return;
-  c.bookingsGuarderia.push({
-    weekStart:b.weekStart, weekEnd:b.weekEnd, serviceStart:b.serviceStart,
-    dogIds:b.dogIds, total:b.total, discount:b.discount, paidAmount:b.total-b.discount, paid:true,
-    createdSimDate:S.meta.simDate,
-    schedule:'Recogida a domicilio 9:15–9:45 · regreso a casa 13:00–13:45',
+  if(!b || !b.weeks.length) return;
+  let remainingDiscount = b.discount;
+  b.weeks.forEach(w=>{
+    const weekDiscount = Math.min(remainingDiscount, w.price);
+    remainingDiscount -= weekDiscount;
+    c.bookingsGuarderia.push({
+      weekStart:w.monday, weekEnd:w.friday, serviceStart:w.serviceStart,
+      dogIds:b.dogIds, total:w.price, discount:weekDiscount, paidAmount:w.price-weekDiscount, paid:true,
+      createdSimDate:S.meta.simDate,
+      schedule:'Recogida a domicilio 9:15–9:45 · regreso a casa 13:00–13:45',
+    });
   });
   c.xpBank = 0;
   const dogNames = joinNames(b.dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería de mañana confirmada', body:`${dogNames}: semana del ${humanDate(b.weekStart)} al ${humanDate(b.weekEnd)}, recogida 9:15–9:45 y regreso 13:00–13:45.`, read:false});
+  const weeksLabel = b.weeks.map(w=>`${humanDate(w.monday)} al ${humanDate(w.friday)}`).join(', ');
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería de mañana confirmada', body:`${dogNames}: ${b.weeks.length} semana(s) — ${weeksLabel}. Recogida 9:15–9:45 y regreso 13:00–13:45.`, read:false});
   pendingGuarderiaBooking = null;
-  guarderiaSelectedMonday = null;
+  guarderiaSelectedWeeks = [];
   saveState();
-  showToast('¡Guardería confirmada! Tu hucha se ha puesto a 0.', {icon:'🐕'});
+  showToast(`¡Guardería confirmada (${b.weeks.length} semana(s))! Tu hucha se ha puesto a 0.`, {icon:'🐕'});
   goHome();
 }
 
