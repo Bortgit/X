@@ -929,6 +929,11 @@ function showToast(message, opts){
     setTimeout(()=>el.remove(), 300);
   }, opts.duration || 2800);
 }
+function reportAppError(e, context){
+  const msg = (e && e.message) ? e.message : String(e);
+  console.error('App error', context, e);
+  showToast('⚠️ Error ' + (context||'') + ': ' + msg, {type:'warn', duration:7000});
+}
 function showXpReward(amount, subtitle){
   const host = document.getElementById('xpRewardOverlay');
   host.innerHTML = `<div class="xp-reward-badge" id="xpRewardBadge">✨ +${amount} XP${subtitle?`<span class="sub">${escapeHtml(subtitle)}</span>`:''}</div>`;
@@ -1108,18 +1113,19 @@ function computePetStateDisplay(c, dog){
 /* ---------------- navigation ---------------- */
 let navCtx = {};
 function nav(id, ctx){
-  navCtx = ctx || {};
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.getElementById('phoneScreen').scrollTop = 0;
-  const renderer = RENDERERS[id];
-  if(renderer){
-    try{
-      renderer();
-    }catch(e){
-      console.error('Error al abrir la pantalla', id, e);
-      showToast('Ha ocurrido un error al abrir esta pantalla. Prueba a pulsar "Reiniciar datos" en la barra de depuración.', {type:'warn'});
-    }
+  try{
+    navCtx = ctx || {};
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    const screenEl = document.getElementById(id);
+    if(!screenEl) throw new Error('No existe la pantalla "'+id+'"');
+    screenEl.classList.add('active');
+    const scroller = document.getElementById('phoneScreen');
+    if(scroller) scroller.scrollTop = 0;
+    const renderer = RENDERERS[id];
+    if(renderer) renderer();
+  }catch(e){
+    console.error('Error al abrir la pantalla', id, e);
+    reportAppError(e, 'al abrir la pantalla "'+id+'"');
   }
 }
 function goHome(){
@@ -2462,6 +2468,13 @@ function boot(){
   if(!c.onboarded) nav('screenOnboarding');
   else goHome();
 }
+
+window.addEventListener('error', function(ev){
+  reportAppError(ev.error || ev.message, 'inesperado');
+});
+window.addEventListener('unhandledrejection', function(ev){
+  reportAppError(ev.reason, 'inesperado (promesa)');
+});
 
 loadState();
 document.addEventListener('DOMContentLoaded', boot);
