@@ -511,9 +511,25 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
         </div>
       </div>
 
+      <!-- ============ HUCHA DE XP: ELEGIR SERVICIO ============ -->
+      <div class="screen" id="screenHuchaServices">
+        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Hucha de XP para residencia</h2></div>
+        <div class="screen-pad">
+          <div class="pricebox">Tienes <b id="huchaServicesBankVal">0 XP</b> en tu hucha (equivalen a <b id="huchaServicesBankEur">0€</b> de descuento). Este saldo es único por cuenta, no por perro, y solo se puede usar en estos dos servicios.</div>
+          <div class="svc-item">
+            <div><b>Residencia</b><br><span class="card-sub">Estancias por noches · 20€/noche el primer perro, 10€/noche el segundo si van juntos</span></div>
+            <div style="text-align:right;"><button class="btn btn-sm" onclick="nav('screenResidence')">Elegir</button></div>
+          </div>
+          <div class="svc-item">
+            <div><b>Guardería de mañana</b><br><span class="card-sub">Lunes a viernes · recogida y entrega a domicilio · 35€/semana por perro</span></div>
+            <div style="text-align:right;"><button class="btn btn-sm" onclick="nav('screenGuarderia')">Elegir</button></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ============ RESIDENCE BOOKING ============ -->
       <div class="screen" id="screenResidence">
-        <div class="header-row"><button class="back-btn" onclick="goHome()">← Volver</button><h2>Reservar residencia</h2></div>
+        <div class="header-row"><button class="back-btn" onclick="nav('screenHuchaServices')">← Volver</button><h2>Reservar residencia</h2></div>
         <div class="screen-pad">
           <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche el primer perro, 10€/noche el segundo si van juntos · aforo simulado por el admin.</div>
           <div id="residDogChoice"></div>
@@ -521,6 +537,17 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="field"><label>Salida</label><input type="date" id="residCheckout"></div>
           <button class="btn btn-outline" onclick="checkResidenceAvailability()">Comprobar disponibilidad</button>
           <div id="residResult" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- ============ GUARDERÍA DE MAÑANA ============ -->
+      <div class="screen" id="screenGuarderia">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenHuchaServices')">← Volver</button><h2>Guardería de mañana</h2></div>
+        <div class="screen-pad">
+          <div class="pricebox">Tu hucha: <b id="guarderiaBankVal">0 XP</b> (equivalen a <b id="guarderiaBankEur">0€</b> de descuento) · 35€/semana por perro · lunes a viernes, recogida a domicilio de 9:15 a 9:45 y regreso a casa de 13:00 a 13:45.</div>
+          <div class="note-box">Compromiso: al menos 3 horas de juego acompañado al día, en patio bien delimitado.</div>
+          <div id="guarderiaDogChoice"></div>
+          <div id="guarderiaResult" style="margin-top:12px;"></div>
         </div>
       </div>
 
@@ -711,13 +738,13 @@ const TRAINER_WHATSAPP_NUMBER = '34621361191'; // número real del adiestrador/n
 const MAX_DOGS = 2; // límite de perros por cuenta/suscripción
 const RESID_PRICE_FIRST_DOG = 20; // €/noche
 const RESID_PRICE_SECOND_DOG = 10; // €/noche, solo si se reserva junto al primero
+const GUARDERIA_PRICE_PER_DOG = 35; // €/semana
 
 const SERVICES = [
   {id:'ind1', name:'Sesión individual', info:'1 sesión de adiestramiento', price:30, sessionsCount:1},
   {id:'bono2', name:'Bono 2 sesiones', info:'2 sesiones de adiestramiento, elige día y hora de cada una', price:50, sessionsCount:2},
   {id:'bono4', name:'Bono 4 sesiones', info:'4 sesiones de adiestramiento, elige día y hora de cada una', price:80, sessionsCount:4},
   {id:'diyg', name:'DIY grupal', info:'Mensual · lunes y jueves, grupo de 18:00–19:00 o 19:00–20:00 (máx. 4 perros por grupo)', price:100, fixedSchedule:true},
-  {id:'diyi', name:'DIY individual', info:'Mensual · lunes y jueves de 17:00 a 18:00', price:150, fixedSchedule:true},
   {id:'videocall', name:'Sesión por videollamada', info:'Videollamada de WhatsApp · duración 30 min', price:15, isVideocall:true, sessionsCount:1},
 ];
 
@@ -861,6 +888,7 @@ function makeClient(over){
     ],
     bookingsTraining:[],
     bookingsResidencia:[],
+    bookingsGuarderia:[],
     dogs:[ makeDog({}) ],
   };
   const merged = Object.assign(base, over||{});
@@ -1348,7 +1376,7 @@ function diyGroupOccupancy(groupId){
 let diySel = {dogId:null, group:null};
 function renderDiyBooking(){
   const c = activeClient();
-  diySel = {dogId: selectedDog(c).id, group: selectedService.id==='diyg' ? null : 'individual'};
+  diySel = {dogId: selectedDog(c).id, group: null};
   document.getElementById('diyBookingTitle').textContent = selectedService.name;
 
   const dogBox = document.getElementById('diyDogChoice');
@@ -1362,18 +1390,13 @@ function renderDiyBooking(){
 
   const groupBox = document.getElementById('diyGroupChoice');
   const noteBox = document.getElementById('diyScheduleNote');
-  if(selectedService.id==='diyg'){
-    groupBox.innerHTML = `<p class="card-sub">Elige grupo (lunes y jueves):</p><div class="hour-row">` +
-      DIY_GROUPS.map(g=>{
-        const occ = diyGroupOccupancy(g.id);
-        const full = occ>=DIY_GROUP_CAPACITY;
-        return `<div class="hour-chip ${full?'closed':''}" data-group="${g.id}" ${full?'':`onclick="pickDiyGroup('${g.id}')"`}>${g.label} (${occ}/${DIY_GROUP_CAPACITY})</div>`;
-      }).join('') + `</div>`;
-    noteBox.innerHTML = 'Horario cerrado: lunes y jueves, salvo festivos. Las clases que caen en festivo no se recuperan. Máximo 4 perros por grupo.';
-  } else {
-    groupBox.innerHTML = '';
-    noteBox.innerHTML = 'Horario cerrado: lunes y jueves de 17:00 a 18:00, salvo festivos. Las clases que caen en festivo no se recuperan.';
-  }
+  groupBox.innerHTML = `<p class="card-sub">Elige grupo (lunes y jueves):</p><div class="hour-row">` +
+    DIY_GROUPS.map(g=>{
+      const occ = diyGroupOccupancy(g.id);
+      const full = occ>=DIY_GROUP_CAPACITY;
+      return `<div class="hour-chip ${full?'closed':''}" data-group="${g.id}" ${full?'':`onclick="pickDiyGroup('${g.id}')"`}>${g.label} (${occ}/${DIY_GROUP_CAPACITY})</div>`;
+    }).join('') + `</div>`;
+  noteBox.innerHTML = 'Horario cerrado: lunes y jueves, salvo festivos. Las clases que caen en festivo no se recuperan. Máximo 4 perros por grupo.';
   updateDiyPricebox();
 }
 function pickDiyDog(id){
@@ -1401,11 +1424,9 @@ function payDiyBooking(){
   const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
   const usedXp = Math.round(discountEur/XP_TO_EUR);
   c.xpMonthly -= usedXp;
-  const schedule = selectedService.id==='diyg'
-    ? `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===diySel.group).label}`
-    : 'Lunes y jueves, 17:00–18:00';
+  const schedule = `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===diySel.group).label}`;
   c.bookingsTraining.push({
-    service:selectedService.name, dogId:diySel.dogId, diyServiceId:selectedService.id, diyGroup: selectedService.id==='diyg' ? diySel.group : null,
+    service:selectedService.name, dogId:diySel.dogId, diyServiceId:selectedService.id, diyGroup:diySel.group,
     schedule, recurring:true,
     price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
     paid:true, createdSimDate:S.meta.simDate,
@@ -1418,7 +1439,12 @@ function payDiyBooking(){
 }
 
 /* ---------------- HUCHA / residencia ---------------- */
-function openResidenceFromBank(){ nav('screenResidence'); }
+function openResidenceFromBank(){ nav('screenHuchaServices'); }
+function renderHuchaServices(){
+  const c = activeClient();
+  document.getElementById('huchaServicesBankVal').textContent = c.xpBank + ' XP';
+  document.getElementById('huchaServicesBankEur').textContent = (c.xpBank*XP_TO_EUR).toFixed(2)+'€';
+}
 let residDogSelection = null; // dogId o 'both'
 function renderResidence(){
   const c = activeClient();
@@ -1517,6 +1543,66 @@ function payResidenceBooking(){
   goHome();
 }
 
+let guarderiaDogSelection = null; // dogId o 'both'
+let pendingGuarderiaBooking = null;
+function renderGuarderia(){
+  const c = activeClient();
+  document.getElementById('guarderiaBankVal').textContent = c.xpBank + ' XP';
+  document.getElementById('guarderiaBankEur').textContent = (c.xpBank*XP_TO_EUR).toFixed(2)+'€';
+
+  const box = document.getElementById('guarderiaDogChoice');
+  if(c.dogs.length>1){
+    guarderiaDogSelection = c.dogs[0].id;
+    box.innerHTML = `<p class="card-sub">¿Qué perro(s) van a la guardería?</p><div class="hour-row">` +
+      c.dogs.map(d=>`<div class="hour-chip ${guarderiaDogSelection===d.id?'selected':''}" data-sel="${d.id}" onclick="pickGuarderiaDog('${d.id}')">${escapeHtml(d.name)} (${GUARDERIA_PRICE_PER_DOG}€/semana)</div>`).join('') +
+      `<div class="hour-chip" data-sel="both" onclick="pickGuarderiaDog('both')">Ambos (${GUARDERIA_PRICE_PER_DOG*2}€/semana)</div>` +
+      `</div>`;
+  } else {
+    guarderiaDogSelection = c.dogs[0].id;
+    box.innerHTML = '';
+  }
+  renderGuarderiaResult();
+}
+function pickGuarderiaDog(sel){
+  guarderiaDogSelection = sel;
+  document.querySelectorAll('#guarderiaDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.sel===sel));
+  renderGuarderiaResult();
+}
+function renderGuarderiaResult(){
+  const c = activeClient();
+  const dogIds = guarderiaDogSelection==='both' ? c.dogs.map(d=>d.id) : [guarderiaDogSelection];
+  const total = dogIds.length * GUARDERIA_PRICE_PER_DOG;
+  const discount = Math.min(c.xpBank*XP_TO_EUR, total);
+  const final = (total-discount).toFixed(2);
+  const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
+  pendingGuarderiaBooking = {dogIds, total, discount};
+  document.getElementById('guarderiaResult').innerHTML = `
+    <div class="pricebox">
+      <div class="line"><span>Perro(s): ${escapeHtml(dogNames)}</span><span></span></div>
+      <div class="line"><span>${dogIds.length} perro(s) x ${GUARDERIA_PRICE_PER_DOG}€/semana</span><span>${total.toFixed(2)}€</span></div>
+      <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
+      <div class="line tot"><span>Total a pagar (primera semana)</span><span>${final}€</span></div>
+    </div>
+    <button class="btn" onclick="payGuarderiaBooking()">Contratar y pagar (simulado)</button>`;
+}
+function payGuarderiaBooking(){
+  const c = activeClient();
+  const b = pendingGuarderiaBooking;
+  if(!b) return;
+  c.bookingsGuarderia.push({
+    dogIds:b.dogIds, total:b.total, discount:b.discount, paidAmount:b.total-b.discount, paid:true,
+    createdSimDate:S.meta.simDate, recurring:true,
+    schedule:'Lunes a viernes · recogida a domicilio 9:15–9:45 · regreso a casa 13:00–13:45',
+  });
+  c.xpBank = 0;
+  const dogNames = joinNames(b.dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería de mañana confirmada', body:`${dogNames}: lunes a viernes, recogida 9:15–9:45 y regreso 13:00–13:45.`, read:false});
+  pendingGuarderiaBooking = null;
+  saveState();
+  showToast('¡Guardería confirmada! Tu hucha se ha puesto a 0.', {icon:'🐕'});
+  goHome();
+}
+
 /* ---------------- AGENDA (cliente + admin) ---------------- */
 function trainingBookingsOnDate(c, date){
   const dow = parseDate(date).getDay(); // 0=domingo ... 1=lunes ... 4=jueves
@@ -1524,10 +1610,16 @@ function trainingBookingsOnDate(c, date){
   return c.bookingsTraining.filter(b=> !b.cancelled && (b.date===date || (b.recurring && isDiyDay)));
 }
 function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
+function guarderiaBookingsOnDate(c, date){
+  const dow = parseDate(date).getDay(); // 0=domingo ... 6=sábado
+  const isWeekday = dow>=1 && dow<=5;
+  return c.bookingsGuarderia.filter(b=> !b.cancelled && b.paid && b.recurring && isWeekday);
+}
 function clientBookingsOnDate(c, date){
   return [
     ...trainingBookingsOnDate(c,date).map(b=>({kind:'training', b})),
     ...residenceBookingsCoveringDate(c,date).map(b=>({kind:'residencia', b})),
+    ...guarderiaBookingsOnDate(c,date).map(b=>({kind:'guarderia', b})),
   ];
 }
 function allBookingsOnDate(date){
@@ -1535,6 +1627,7 @@ function allBookingsOnDate(date){
   S.clients.forEach(cl=>{
     trainingBookingsOnDate(cl,date).forEach(b=> items.push({client:cl, kind:'training', b}));
     residenceBookingsCoveringDate(cl,date).forEach(b=> items.push({client:cl, kind:'residencia', b}));
+    guarderiaBookingsOnDate(cl,date).forEach(b=> items.push({client:cl, kind:'guarderia', b}));
   });
   return items;
 }
@@ -1545,6 +1638,9 @@ function agendaItemLine(c, it){
     return `${when} — ${escapeHtml(it.b.service)}${dn?' ('+escapeHtml(dn.name)+')':''}`;
   }
   const names = joinNames(it.b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
+  if(it.kind==='guarderia'){
+    return `🐕 Guardería de mañana — ${escapeHtml(names)} (🔁 ${it.b.schedule})`;
+  }
   return `🏠 Residencia — ${escapeHtml(names)} (${humanDate(it.b.checkin)} → ${humanDate(it.b.checkout)})`;
 }
 
@@ -1945,6 +2041,7 @@ function renderAdminStats(){
   S.clients.forEach(c=>{
     c.bookingsTraining.forEach(b=>{ if(!b.cancelled && monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
     c.bookingsResidencia.forEach(b=>{ if(!b.cancelled && monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
+    c.bookingsGuarderia.forEach(b=>{ if(!b.cancelled && monthKey(b.createdSimDate)===mk) revenue += b.paidAmount; });
     if(c.subscriptionStatus==='active') active++;
     if(c.subscriptionStatus==='cancelled') cancelled++;
   });
@@ -1991,6 +2088,13 @@ function openClientModal(id){
       : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelResidenceBooking('${c.id}',${i})">Cancelar</button>`;
     return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${humanDate(b.checkin)} → ${humanDate(b.checkout)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€)</span>${right}</div>`;
   }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
+  const guarderiaHist = c.bookingsGuarderia.length ? c.bookingsGuarderia.map((b,i)=>{
+    const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
+    const right = b.cancelled
+      ? `<span style="color:var(--danger);font-weight:800;font-size:11px;white-space:nowrap;">Cancelada</span>`
+      : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelGuarderiaBooking('${c.id}',${i})">Cancelar</button>`;
+    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${humanDate(b.createdSimDate)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€/semana)</span>${right}</div>`;
+  }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
   document.getElementById('clientModalBody').innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
     <div class="kv"><span>Teléfono</span><span>${escapeHtml(c.phone)}</span></div>
@@ -2005,6 +2109,8 @@ function openClientModal(id){
     ${trainingHist}
     <h3 style="font-size:13px;">Historial de residencia</h3>
     ${residHist}
+    <h3 style="font-size:13px;">Historial de guardería de mañana</h3>
+    ${guarderiaHist}
     <hr class="sep">
     <h3 style="font-size:13px;">Ajustar XP manualmente</h3>
     <p class="card-sub">Suma, resta o pon a 0 el XP de este cliente (por ejemplo, para corregir un fallo o regalar XP). El cliente recibe una notificación con el cambio.</p>
@@ -2096,6 +2202,18 @@ function adminCancelResidenceBooking(clientId, idx){
   openClientModal(clientId);
   if(S.meta.view==='admin') renderAdminAgenda();
 }
+function adminCancelGuarderiaBooking(clientId, idx){
+  const c = S.clients.find(x=>x.id===clientId);
+  const b = c.bookingsGuarderia[idx];
+  if(!b || b.cancelled) return;
+  if(!confirm('¿Cancelar esta suscripción de guardería? El cliente no puede deshacerlo ni volver a activarla; recibirá un aviso.')) return;
+  b.cancelled = true;
+  b.paid = false;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería cancelada', body:'Tu adiestrador ha cancelado tu suscripción a la guardería de mañana.', read:false});
+  saveState();
+  openClientModal(clientId);
+  if(S.meta.view==='admin') renderAdminAgenda();
+}
 function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
 
 /* ---------------- DEBUG BAR ---------------- */
@@ -2150,7 +2268,9 @@ const RENDERERS = {
   screenXpServices: renderXpServices,
   screenXpBooking: renderXpBooking,
   screenDiyBooking: renderDiyBooking,
+  screenHuchaServices: renderHuchaServices,
   screenResidence: renderResidence,
+  screenGuarderia: renderGuarderia,
   screenSession: renderSession,
   screenConducta: renderConducta,
   screenExtra: renderExtra,
