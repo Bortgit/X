@@ -547,6 +547,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="pricebox">Tu hucha: <b id="guarderiaBankVal">0 XP</b> (equivalen a <b id="guarderiaBankEur">0€</b> de descuento) · 35€/semana por perro · lunes a viernes, recogida a domicilio de 9:15 a 9:45 y regreso a casa de 13:00 a 13:45.</div>
           <div class="note-box">Compromiso: al menos 3 horas de juego acompañado al día, en patio bien delimitado.</div>
           <div id="guarderiaDogChoice"></div>
+          <p class="card-sub">Elige una semana (lunes a viernes). Si la semana ya ha empezado, los días pasados se dan por perdidos.</p>
+          <div class="daygrid" id="guarderiaDayGrid"></div>
           <div id="guarderiaResult" style="margin-top:12px;"></div>
         </div>
       </div>
@@ -559,8 +561,6 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <div class="card-title" id="sessionTitle">Nombre del ejercicio</div>
             <div class="card-sub" id="sessionDesc" style="line-height:1.55;">Descripción</div>
           </div>
-          <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo 1 — aquí iría la foto/gif real del ejercicio</div>
-          <div class="placeholder-img"><span class="em">🖼️</span>Imagen de ejemplo 2 — aquí iría la foto/gif real del ejercicio</div>
           <div id="sessionInteraction"></div>
         </div>
       </div>
@@ -749,118 +749,118 @@ const SERVICES = [
 ];
 
 const BASICO_SESSIONS = [
-  {"name": "Clicker 1/4", "kind": "simple", "desc": "Objetivo: comenzar la asociación entre click y recompensa.<br>Preparar el clicker y premios pequeños → click → premio inmediato → esperar unos segundos → repetir.<br>2 series de 15 repeticiones. No pedir ninguna conducta concreta: solo que el perro entienda que click = algo agradable."},
-  {"name": "Clicker 2/4", "kind": "simple", "desc": "Repetir la asociación click → premio.<br>2 series de 15 repeticiones, introduciendo pequeñas variaciones de posición del perro y del entrenador.<br>Todavía sin órdenes verbales."},
-  {"name": "Clicker 3/4", "kind": "simple", "desc": "Continuar la asociación click-recompensa y empezar a observar conductas espontáneas (orientarse hacia el entrenador, estar tranquilo, conducta natural deseada): cuando aparezcan, click → premio.<br>2 series de 15 oportunidades de aprendizaje.<br>Objetivo: que el perro entienda que el click también puede marcar una conducta concreta."},
-  {"name": "Juego de conexión y movimiento", "kind": "juego", "desc": "Juegos suaves de conexión y movimiento: seguir al entrenador, pequeños cambios de dirección, búsqueda sencilla de comida, interacción con juguete.<br>No utilizar clicker. Duración aproximada 10-15 minutos, adaptada al perro."},
-  {"name": "Clicker 4/4", "kind": "simple", "desc": "Consolidar la asociación click-recompensa y empezar a usar el clicker para marcar conductas concretas.<br>2 series de 15 repeticiones, buscando precisión: el click debe coincidir con el momento exacto, no segundos después."},
-  {"name": "Señuelo 1/5", "kind": "obediencia", "desc": "Usar comida como guía para provocar movimientos sencillos: el perro sigue la mano con el hocico.<br>2 series de 15 repeticiones. La comida debe estar disponible como guía, pero solo se entrega cuando aparece la conducta buscada."},
-  {"name": "Señuelo 2/5", "kind": "obediencia", "desc": "Continuar el seguimiento de la mano, reduciendo ligeramente la dependencia del premio visible.<br>2 series de 15 repeticiones, buscando movimientos cada vez más fluidos."},
-  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Cambios suaves de dirección y pequeñas persecuciones controladas, con juguete o búsqueda de premios.<br>No utilizar clicker."},
-  {"name": "Señuelo 3/5", "kind": "obediencia", "desc": "Empezar a ocultar parcialmente el premio: la mano sigue haciendo el gesto, pero el perro empieza a responder al movimiento y no solo a la comida visible.<br>2 series de 15 repeticiones."},
-  {"name": "Señuelo 4/5", "kind": "obediencia", "desc": "Reducir aún más la presencia visible del premio, llevándolo preferentemente a la otra mano para empezar a independizar la conducta de la mano que hace el gesto.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de olfato sencillo", "kind": "juego", "desc": "Esconder pequeñas recompensas en lugares fáciles y dejar que el perro las encuentre. Trabajar de forma tranquila y sin presión."},
-  {"name": "Señuelo 5/5", "kind": "obediencia", "desc": "Finalizar la fase de señuelo: gesto → conducta → click → recompensa, con la mano progresivamente vacía.<br>2 series de 15 repeticiones.<br>El señuelo es una herramienta de enseñanza, no el objetivo final."},
-  {"name": "Sentado 1/7", "kind": "obediencia", "desc": "Enseñar «sentado» guiando con la mano: llevarla suavemente hacia arriba y atrás para favorecer el movimiento natural hacia la posición. Marcar y recompensar las aproximaciones correctas.<br>2 series de 15 repeticiones. No forzar físicamente al perro a sentarse."},
-  {"name": "Sentado 2/7", "kind": "obediencia", "desc": "Buscar la posición sentada completa: cuando el perro se siente, click → recompensa.<br>2 series de 15 repeticiones, reduciendo progresivamente el movimiento de la mano."},
-  {"name": "Juego de seguimiento del entrenador", "kind": "juego", "desc": "Juego tranquilo de seguimiento: pequeños cambios de dirección, recompensando al perro por mantenerse conectado."},
-  {"name": "Sentado 3/7", "kind": "obediencia", "desc": "Introducir el gesto de forma más clara, con la mano cada vez más vacía.<br>2 series de 15 repeticiones."},
-  {"name": "Sentado 4/7", "kind": "obediencia", "desc": "Introducir la palabra «sienta»/«sentado»: primero la palabra y después el gesto.<br>«Sienta» → gesto → sentado → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de búsqueda sencilla de premios", "kind": "juego", "desc": "Dejar que el perro explore con el olfato y terminar el juego con calma."},
-  {"name": "Sentado 5/7", "kind": "obediencia", "desc": "Reducir la ayuda gestual: decir la palabra antes del gesto y retrasar progresivamente el gesto.<br>2 series de 15 repeticiones."},
-  {"name": "Sentado 6/7", "kind": "obediencia", "desc": "Trabajar el sentado con el entrenador en diferentes posiciones: delante, ligeramente lateral, a distintas distancias.<br>2 series de 15 repeticiones."},
-  {"name": "Sentado 7/7", "kind": "obediencia", "desc": "Consolidación y evaluación: 30 oportunidades de sentado en diferentes posiciones.<br>Buscar al menos 8 respuestas correctas de cada 10 en el nivel trabajado; si el rendimiento baja, facilitar el ejercicio y continuar hasta completar las repeticiones."},
-  {"name": "Juego tranquilo de olfato y conexión", "kind": "juego", "desc": "Sesión de juego tranquilo centrada en el olfato y la conexión con el entrenador."},
-  {"name": "Tumbado 1/7", "kind": "obediencia", "desc": "Usar un señuelo desde la posición sentada para guiar al perro hacia el suelo, marcando las aproximaciones correctas.<br>2 series de 15 repeticiones."},
-  {"name": "Tumbado 2/7", "kind": "obediencia", "desc": "Buscar el tumbado completo: click → recompensa.<br>2 series de 15 repeticiones, reduciendo progresivamente el movimiento de la mano."},
-  {"name": "Juego de búsqueda de comida", "kind": "juego", "desc": "Pequeñas búsquedas fáciles de comida, terminando con una fase de calma."},
-  {"name": "Tumbado 3/7", "kind": "obediencia", "desc": "Trabajar el gesto con menor dependencia del premio visible.<br>2 series de 15 repeticiones."},
-  {"name": "Tumbado 4/7", "kind": "obediencia", "desc": "Introducir la palabra «tumba»/«abajo»: palabra → gesto → tumbado → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de movimiento suave y conexión", "kind": "juego", "desc": "Juego de movimiento suave centrado en mantener la conexión con el entrenador."},
-  {"name": "Tumbado 5/7", "kind": "obediencia", "desc": "Reducir progresivamente la ayuda gestual.<br>2 series de 15 repeticiones."},
-  {"name": "Tumbado 6/7", "kind": "obediencia", "desc": "Practicar el tumbado desde diferentes posiciones del entrenador.<br>2 series de 15 repeticiones."},
-  {"name": "Tumbado 7/7", "kind": "obediencia", "desc": "Consolidación y evaluación: trabajar en diferentes posiciones y con pequeñas variaciones.<br>2 series de 15 repeticiones, buscando aproximadamente 8 respuestas correctas de cada 10. Si es necesario, facilitar el ejercicio sin saltar la sesión."},
-  {"name": "Juego de autocontrol y conexión", "kind": "juego", "desc": "Pequeños momentos de espera durante el juego antes de volver a liberar al perro, trabajando autocontrol y conexión."},
-  {"name": "Quieto 1/7", "kind": "obediencia", "desc": "Partir de sentado: mostrar la palma de la mano y esperar 1-2 segundos, volviendo junto al perro antes de que se mueva.<br>Click → recompensa en posición → señal de liberación.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto 2/7", "kind": "obediencia", "desc": "Aumentar ligeramente la duración, manteniendo una única variable de dificultad.<br>2 series de 15 repeticiones. Utilizar siempre la señal de liberación."},
-  {"name": "Juego de autocontrol", "kind": "juego", "desc": "Pequeños movimientos del juguete, premiando la capacidad del perro de esperar antes de volver a empezar."},
-  {"name": "Quieto 3/7", "kind": "obediencia", "desc": "Introducir distancia: dar la señal de quieto, dar uno o dos pasos atrás, regresar y recompensar al perro en su posición.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto 4/7", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia, sin aumentar a la vez distancia, duración y distracciones.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de búsqueda y calma", "kind": "juego", "desc": "Alternar actividad y pequeños momentos de tranquilidad."},
-  {"name": "Quieto 5/7", "kind": "obediencia", "desc": "Introducir claramente la palabra «quieto»: «Quieto» → gesto → permanencia → click → recompensa → liberación.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto 6/7", "kind": "obediencia", "desc": "Combinar duración y distancia de forma progresiva, con pequeñas variaciones.<br>2 series de 15 repeticiones. Si baja la calidad, reducir una de las variables."},
-  {"name": "Quieto 7/7", "kind": "obediencia", "desc": "Evaluación: trabajar aproximadamente 10 segundos de permanencia y algunos pasos de distancia, dentro de las capacidades reales del perro.<br>2 series de 15 repeticiones, manteniendo clara la señal de liberación."},
-  {"name": "Juego de seguimiento y persecución controlada", "kind": "juego", "desc": "El entrenador se aleja unos pasos y premia al perro por seguirle. No convertir todas las llamadas en el final del juego."},
-  {"name": "Ven 1/6", "kind": "obediencia", "desc": "Comenzar la llamada a muy corta distancia y sin distracciones, con una señal gestual clara. Cuando el perro acuda: click → recompensa generosa.<br>2 series de 15 repeticiones."},
-  {"name": "Ven 2/6", "kind": "obediencia", "desc": "Aumentar ligeramente la distancia, variando la posición del entrenador.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de movimiento", "kind": "juego", "desc": "El entrenador se aleja unos pasos y deja que el perro le siga voluntariamente."},
-  {"name": "Ven 3/6", "kind": "obediencia", "desc": "Trabajar la llamada desde diferentes ángulos, evitando llamar cuando sea poco probable que el perro responda.<br>2 series de 15 repeticiones."},
-  {"name": "Ven 4/6", "kind": "obediencia", "desc": "Introducir la palabra «ven» antes del gesto: «Ven» → gesto → llegada → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Juego con cambios de dirección y búsqueda", "kind": "juego", "desc": "Dejar que el perro vuelva voluntariamente al entrenador en varias ocasiones."},
-  {"name": "Ven 5/6", "kind": "obediencia", "desc": "Trabajar en un espacio algo más amplio y seguro, usando correa larga si es necesario y aumentando progresivamente la distancia.<br>2 series de 15 repeticiones. No usar la llamada solo para terminar una actividad agradable."},
-  {"name": "Ven 6/6", "kind": "obediencia", "desc": "Introducir pequeñas distracciones controladas, premiando especialmente las llamadas rápidas y voluntarias (se pueden usar recompensas de mayor valor).<br>2 series de 15 repeticiones. Si la respuesta empeora, reducir la distracción."},
-  {"name": "Juego de seguimiento y cambios de dirección", "kind": "juego", "desc": "Juego de seguimiento con cambios de dirección, preparatorio para el trabajo de correa."},
-  {"name": "Correa 1/5", "kind": "obediencia", "desc": "Reforzar la correa floja: cada vez que el perro camine sin tensión, click → recompensa.<br>2 series de 15 oportunidades. Si aparece tensión, detenerse o cambiar suavemente de dirección y continuar al volver la holgura. No dar tirones."},
-  {"name": "Correa 2/5", "kind": "obediencia", "desc": "Aumentar progresivamente los pasos entre recompensas.<br>2 series de 15 oportunidades. Permitir momentos de olfateo cuando sean compatibles con el ejercicio."},
-  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Juego de movimiento y seguimiento, en línea con el trabajo de correa."},
-  {"name": "Correa 3/5", "kind": "obediencia", "desc": "Introducir cambios de dirección, reforzando al perro cuando acompaña voluntariamente al entrenador.<br>2 series de 15 oportunidades."},
-  {"name": "Correa 4/5", "kind": "obediencia", "desc": "Introducir pequeñas distracciones ambientales, manteniendo el criterio principal: correa sin tensión.<br>2 series de 15 oportunidades."},
-  {"name": "Correa 5/5", "kind": "obediencia", "desc": "Realizar un paseo corto real aplicando lo aprendido, sin exigir una posición perfecta durante todo el paseo. Objetivo: caminar con correa floja y permitir exploración controlada.<br>La caminata real sustituye las repeticiones formales de 2×15."},
+  {"name": "Clicker 1/4", "kind": "simple", "desc": "Objetivo: comenzar la asociación entre click y recompensa.<br><br>• Preparar el clicker y pequeños premios.<br>• Hacer click.<br>• Entregar inmediatamente el premio.<br>• Esperar unos segundos.<br>• Repetir.<br><br>Realizar 2 series de 15 repeticiones.<br><br>No pedir ninguna conducta concreta.<br><br>El objetivo es que el perro empiece a comprender: click = inmediatamente después ocurre algo agradable."},
+  {"name": "Clicker 2/4", "kind": "simple", "desc": "Repetir la asociación: click → premio.<br><br>Realizar 2 series de 15 repeticiones.<br><br>Introducir pequeñas variaciones en la posición del perro y del entrenador.<br><br>No utilizar todavía órdenes verbales."},
+  {"name": "Clicker 3/4", "kind": "simple", "desc": "Continuar la asociación click-recompensa.<br><br>Además, observar conductas espontáneas del perro.<br><br>Cuando aparezca una conducta que queramos reforzar, como orientarse hacia el entrenador, permanecer tranquilo o realizar una conducta natural deseada: click → premio.<br><br>Realizar 2 series de 15 oportunidades de aprendizaje.<br><br>El objetivo es comenzar a enseñar que el click también puede marcar una conducta concreta."},
+  {"name": "Juego de conexión y movimiento", "kind": "juego", "desc": "Sesión obligatoria de juego.<br><br>Realizar juegos suaves de conexión y movimiento.<br><br>Ejemplos:<br>• seguir al entrenador.<br>• pequeños cambios de dirección.<br>• búsqueda sencilla de comida.<br>• interacción con juguete.<br><br>No utilizar clicker.<br><br>Duración aproximada: 10-15 minutos, adaptada al perro."},
+  {"name": "Clicker 4/4", "kind": "simple", "desc": "Consolidar la asociación click-recompensa y comenzar a utilizar el clicker para marcar conductas concretas.<br><br>Realizar 2 series de 15 repeticiones.<br><br>El entrenador deberá buscar precisión: el click debe coincidir con el momento correcto, no unos segundos después."},
+  {"name": "Señuelo 1/5", "kind": "obediencia", "desc": "Comenzar a utilizar comida como guía para provocar movimientos sencillos.<br><br>Seguir la mano con el hocico.<br><br>Realizar 2 series de 15 repeticiones.<br><br>La comida deberá estar disponible como guía, pero no se entregará hasta que aparezca la conducta buscada."},
+  {"name": "Señuelo 2/5", "kind": "obediencia", "desc": "Continuar con el seguimiento de la mano.<br><br>Reducir ligeramente la dependencia del premio visible.<br><br>Realizar 2 series de 15 repeticiones.<br><br>Buscar movimientos cada vez más fluidos."},
+  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Juego de movimiento y seguimiento.<br><br>Realizar cambios suaves de dirección y pequeñas persecuciones controladas.<br><br>Se puede utilizar un juguete apropiado o búsqueda de premios.<br><br>No utilizar clicker."},
+  {"name": "Señuelo 3/5", "kind": "obediencia", "desc": "Comenzar a ocultar parcialmente el premio.<br><br>La mano continúa realizando el gesto, pero el perro empieza a responder al movimiento y no únicamente a la comida visible.<br><br>2 series de 15 repeticiones."},
+  {"name": "Señuelo 4/5", "kind": "obediencia", "desc": "Reducir todavía más la presencia visible del premio.<br><br>Utilizar el premio preferentemente en la otra mano para comenzar a independizar la conducta de la mano que realiza el gesto.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de olfato sencillo", "kind": "juego", "desc": "Juego de olfato sencillo.<br><br>Esconder pequeñas recompensas en lugares fáciles y permitir que el perro las encuentre.<br><br>Trabajar de manera tranquila y sin presión."},
+  {"name": "Señuelo 5/5", "kind": "obediencia", "desc": "Finalizar la fase inicial de señuelo.<br><br>Realizar: gesto → conducta → click → recompensa.<br><br>La mano deberá estar progresivamente vacía.<br><br>2 series de 15 repeticiones.<br><br>El señuelo se considera una herramienta de enseñanza, no el objetivo final."},
+  {"name": "Sentado 1/7", "kind": "obediencia", "desc": "Comenzar a enseñar «sentado» mediante guía de la mano.<br><br>Llevar la mano suavemente hacia arriba y atrás para favorecer el movimiento natural hacia la posición sentada.<br><br>Marcar y recompensar las aproximaciones correctas.<br><br>2 series de 15 repeticiones.<br><br>No forzar físicamente al perro a sentarse."},
+  {"name": "Sentado 2/7", "kind": "obediencia", "desc": "Buscar la posición sentada completa.<br><br>Cuando el perro se siente: click → recompensa.<br><br>2 series de 15 repeticiones.<br><br>Reducir progresivamente el movimiento de la mano."},
+  {"name": "Juego de seguimiento del entrenador", "kind": "juego", "desc": "Juego tranquilo de seguimiento del entrenador.<br><br>Realizar pequeños cambios de dirección y recompensar al perro por mantenerse conectado."},
+  {"name": "Sentado 3/7", "kind": "obediencia", "desc": "Introducir el gesto de manera más clara.<br><br>La mano deberá estar cada vez más vacía.<br><br>2 series de 15 repeticiones."},
+  {"name": "Sentado 4/7", "kind": "obediencia", "desc": "Introducir la palabra «sienta» o «sentado», según la señal elegida.<br><br>Primero la palabra y, después, el gesto.<br><br>Ejemplo: «Sienta» → gesto → sentado → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de búsqueda sencilla de premios", "kind": "juego", "desc": "Juego de búsqueda sencilla de premios.<br><br>Permitir que el perro explore con el olfato y termine el juego con calma."},
+  {"name": "Sentado 5/7", "kind": "obediencia", "desc": "Reducir la ayuda gestual.<br><br>Decir la palabra antes del gesto y retrasar progresivamente el gesto.<br><br>2 series de 15 repeticiones."},
+  {"name": "Sentado 6/7", "kind": "obediencia", "desc": "Trabajar el sentado en diferentes posiciones del entrenador.<br><br>• delante.<br>• ligeramente lateral.<br>• a diferentes distancias.<br><br>2 series de 15 repeticiones."},
+  {"name": "Sentado 7/7", "kind": "obediencia", "desc": "Consolidación y evaluación.<br><br>Realizar 30 oportunidades de sentado en diferentes posiciones.<br><br>Buscar al menos 8 respuestas correctas de cada 10 en el nivel trabajado.<br><br>Si el rendimiento disminuye, facilitar el ejercicio y continuar hasta completar las repeticiones."},
+  {"name": "Juego tranquilo de olfato y conexión", "kind": "juego", "desc": "Juego tranquilo de olfato y conexión."},
+  {"name": "Tumbado 1/7", "kind": "obediencia", "desc": "Utilizar un señuelo desde la posición sentada para guiar al perro hacia el suelo.<br><br>Marcar aproximaciones correctas.<br><br>2 series de 15 repeticiones."},
+  {"name": "Tumbado 2/7", "kind": "obediencia", "desc": "Buscar el tumbado completo.<br><br>click → recompensa.<br><br>2 series de 15 repeticiones.<br><br>Reducir progresivamente el movimiento de la mano."},
+  {"name": "Juego de búsqueda de comida", "kind": "juego", "desc": "Juego de búsqueda de comida.<br><br>Utilizar pequeñas búsquedas fáciles y terminar con una fase de calma."},
+  {"name": "Tumbado 3/7", "kind": "obediencia", "desc": "Trabajar el gesto con menor dependencia del premio visible.<br><br>2 series de 15 repeticiones."},
+  {"name": "Tumbado 4/7", "kind": "obediencia", "desc": "Introducir la palabra «tumba» o «abajo», según la señal elegida.<br><br>Palabra → gesto → tumbado → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de movimiento suave y conexión", "kind": "juego", "desc": "Juego de movimiento suave y conexión."},
+  {"name": "Tumbado 5/7", "kind": "obediencia", "desc": "Reducir progresivamente la ayuda gestual.<br><br>2 series de 15 repeticiones."},
+  {"name": "Tumbado 6/7", "kind": "obediencia", "desc": "Practicar desde diferentes posiciones del entrenador.<br><br>2 series de 15 repeticiones."},
+  {"name": "Tumbado 7/7", "kind": "obediencia", "desc": "Consolidación y evaluación.<br><br>Trabajar en diferentes posiciones y con pequeñas variaciones.<br><br>2 series de 15 repeticiones.<br><br>Buscar aproximadamente 8 respuestas correctas de cada 10.<br><br>Si es necesario, facilitar el ejercicio sin saltar la sesión."},
+  {"name": "Juego de autocontrol y conexión", "kind": "juego", "desc": "Juego de autocontrol y conexión.<br><br>Realizar pequeños momentos de espera durante el juego antes de volver a liberar al perro."},
+  {"name": "Quieto 1/7", "kind": "obediencia", "desc": "Partir de sentado.<br><br>Mostrar la palma de la mano y esperar 1-2 segundos.<br><br>Volver al perro antes de que se mueva.<br><br>click → recompensa en posición → señal de liberación.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto 2/7", "kind": "obediencia", "desc": "Aumentar ligeramente la duración.<br><br>Mantener una única variable de dificultad.<br><br>2 series de 15 repeticiones.<br><br>Utilizar siempre la señal de liberación."},
+  {"name": "Juego de autocontrol", "kind": "juego", "desc": "Juego de autocontrol.<br><br>Realizar pequeños movimientos del juguete y premiar la capacidad de esperar antes de comenzar de nuevo."},
+  {"name": "Quieto 3/7", "kind": "obediencia", "desc": "Introducir distancia.<br><br>Dar la señal de quieto, dar uno o dos pasos atrás, regresar y recompensar al perro en su posición.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto 4/7", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia.<br><br>No aumentar simultáneamente distancia, duración y distracciones.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de búsqueda y calma", "kind": "juego", "desc": "Juego de búsqueda y calma.<br><br>Alternar actividad y pequeños momentos de tranquilidad."},
+  {"name": "Quieto 5/7", "kind": "obediencia", "desc": "Introducir claramente la palabra «quieto».<br><br>«Quieto» → gesto → permanencia → click → recompensa → liberación.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto 6/7", "kind": "obediencia", "desc": "Combinar duración y distancia de forma progresiva.<br><br>Realizar pequeñas variaciones.<br><br>2 series de 15 repeticiones.<br><br>Si disminuye la calidad, reducir una de las variables."},
+  {"name": "Quieto 7/7", "kind": "obediencia", "desc": "Evaluación.<br><br>Trabajar aproximadamente 10 segundos de permanencia y algunos pasos de distancia, siempre dentro de las capacidades reales del perro.<br><br>Realizar 2 series de 15 repeticiones.<br><br>La señal de liberación deberá mantenerse clara."},
+  {"name": "Juego de seguimiento y persecución controlada", "kind": "juego", "desc": "Juego de seguimiento y persecución controlada.<br><br>El entrenador se aleja unos pasos y premia al perro por seguirle.<br><br>No convertir todas las llamadas en el final del juego."},
+  {"name": "Ven 1/6", "kind": "obediencia", "desc": "Comenzar la llamada a muy corta distancia y sin distracciones.<br><br>Utilizar primero una señal gestual clara.<br><br>Cuando el perro acuda: click → recompensa generosa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Ven 2/6", "kind": "obediencia", "desc": "Aumentar ligeramente la distancia.<br><br>Variar la posición del entrenador.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de movimiento", "kind": "juego", "desc": "Juego de movimiento.<br><br>El entrenador puede alejarse unos pasos y permitir que el perro le siga voluntariamente."},
+  {"name": "Ven 3/6", "kind": "obediencia", "desc": "Trabajar la llamada desde diferentes ángulos.<br><br>Evitar llamar cuando exista una alta probabilidad de que el perro no responda.<br><br>2 series de 15 repeticiones."},
+  {"name": "Ven 4/6", "kind": "obediencia", "desc": "Introducir la palabra «ven» antes del gesto.<br><br>«Ven» → gesto → llegada → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego con cambios de dirección y búsqueda", "kind": "juego", "desc": "Juego con cambios de dirección y búsqueda.<br><br>Dejar que el perro vuelva voluntariamente al entrenador en varias ocasiones."},
+  {"name": "Ven 5/6", "kind": "obediencia", "desc": "Trabajar en un espacio algo más amplio y seguro.<br><br>Utilizar correa larga cuando sea necesario.<br><br>Aumentar progresivamente la distancia.<br><br>2 series de 15 repeticiones.<br><br>No utilizar la llamada únicamente para terminar una actividad agradable."},
+  {"name": "Ven 6/6", "kind": "obediencia", "desc": "Introducir pequeñas distracciones controladas.<br><br>Premiar especialmente las llamadas rápidas y voluntarias.<br><br>Se pueden utilizar recompensas de mayor valor ocasionalmente.<br><br>2 series de 15 repeticiones.<br><br>Si la respuesta empeora, reducir la distracción y continuar."},
+  {"name": "Juego de seguimiento y cambios de dirección", "kind": "juego", "desc": "Juego de seguimiento y cambios de dirección."},
+  {"name": "Correa 1/5", "kind": "obediencia", "desc": "Objetivo: reforzar la correa floja.<br><br>Cada vez que el perro camine con la correa sin tensión: click → recompensa.<br><br>2 series de 15 oportunidades.<br><br>Si aparece tensión, detenerse o cambiar suavemente de dirección y continuar cuando vuelva la holgura.<br><br>No dar tirones."},
+  {"name": "Correa 2/5", "kind": "obediencia", "desc": "Aumentar progresivamente el número de pasos entre recompensas.<br><br>2 series de 15 oportunidades.<br><br>Permitir momentos de olfateo cuando sean compatibles con el ejercicio."},
+  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Juego de movimiento y seguimiento."},
+  {"name": "Correa 3/5", "kind": "obediencia", "desc": "Introducir cambios de dirección.<br><br>Reforzar al perro cuando acompaña voluntariamente al entrenador.<br><br>2 series de 15 oportunidades."},
+  {"name": "Correa 4/5", "kind": "obediencia", "desc": "Introducir pequeñas distracciones ambientales.<br><br>Mantener el criterio principal: correa sin tensión.<br><br>2 series de 15 oportunidades."},
+  {"name": "Correa 5/5", "kind": "obediencia", "desc": "Realizar un paseo corto real aplicando lo aprendido.<br><br>No exigir una posición perfecta durante todo el paseo.<br><br>El objetivo es caminar con correa floja y permitir exploración controlada.<br><br>La caminata real sustituye las repeticiones formales de 2×15."},
 ];
 const AVANZADO_SESSIONS = [
-  {"name": "Juego de conexión y orientación voluntaria", "kind": "juego", "desc": "Juego de conexión, reforzando la orientación voluntaria del perro hacia el entrenador. No utilizar clicker."},
-  {"name": "Mírame 1/5", "kind": "obediencia", "desc": "Reforzar la orientación visual hacia el entrenador. Al principio se puede usar comida cerca de los ojos como ayuda; cuando el perro mire: click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Mírame 2/5", "kind": "obediencia", "desc": "Reducir progresivamente la comida cerca de la cara, premiando desde la otra mano. Buscar que el perro mire al entrenador, no que siga la comida.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de seguimiento y conexión", "kind": "juego", "desc": "Juego de seguimiento y conexión, reforzando también los momentos en que el perro busca voluntariamente al entrenador."},
-  {"name": "Mírame 3/5", "kind": "obediencia", "desc": "Introducir pequeñas distracciones, premiando especialmente las orientaciones espontáneas hacia el entrenador.<br>2 series de 15 repeticiones."},
-  {"name": "Mírame 4/5", "kind": "obediencia", "desc": "Introducir la palabra «mírame»: «Mírame» → gesto → mirada → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Mírame 5/5", "kind": "obediencia", "desc": "Trabajar la conducta en diferentes posiciones y contextos, usándola como herramienta de conexión antes de otros ejercicios, sin exigir contacto visual constante.<br>2 series de 15 repeticiones."},
-  {"name": "Juego con autocontrol y pequeñas distracciones", "kind": "juego", "desc": "Juego centrado en el autocontrol, con pequeñas distracciones."},
-  {"name": "Quieto avanzado 1/5", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia, trabajando aproximadamente 3 metros cuando el perro pueda mantener bien la posición. Regresar junto al perro antes de recompensar.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto avanzado 2/5", "kind": "obediencia", "desc": "Introducir breves momentos en que el entrenador desaparece parcialmente de la vista, únicamente en un entorno seguro.<br>2 series de 15 repeticiones."},
-  {"name": "Juego con pequeñas distracciones ambientales", "kind": "juego", "desc": "Juego con introducción de pequeñas distracciones del entorno."},
-  {"name": "Quieto avanzado 3/5", "kind": "obediencia", "desc": "Introducir personas pasando a distancia; la distracción debe ser lo bastante baja como para permitir respuestas correctas.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto avanzado 4/5", "kind": "obediencia", "desc": "Introducir movimiento de objetos, empezando con movimientos lentos y alejados y aumentando después ligeramente la intensidad.<br>2 series de 15 repeticiones."},
-  {"name": "Quieto avanzado 5/5", "kind": "obediencia", "desc": "Trabajar una permanencia más larga con distracciones moderadas, sin combinar de golpe demasiadas dificultades.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de llamada y retorno voluntario", "kind": "juego", "desc": "Juego de llamada y retorno voluntario, reforzando que volver al entrenador no siempre significa que se acaba la diversión."},
-  {"name": "Ven avanzado 1/5", "kind": "obediencia", "desc": "Introducir una persona como distracción controlada, que permanecerá neutral.<br>2 series de 15 repeticiones."},
-  {"name": "Ven avanzado 2/5", "kind": "obediencia", "desc": "Introducir juguetes u objetos interesantes en el entorno, llamando solo cuando haya una probabilidad razonable de éxito.<br>2 series de 15 repeticiones."},
-  {"name": "Juego con juguetes y búsqueda", "kind": "juego", "desc": "Juego con juguetes y búsqueda, practicando pequeñas interrupciones y vuelta posterior al juego."},
-  {"name": "Ven avanzado 3/5", "kind": "obediencia", "desc": "Introducir otro perro como distracción, solo de forma controlada y a distancia adecuada, usando correa larga si es necesario.<br>2 series de 15 repeticiones."},
-  {"name": "Ven avanzado 4/5", "kind": "obediencia", "desc": "Trabajar en un entorno exterior con estímulos, usando siempre medidas de seguridad adecuadas.<br>2 series de 15 repeticiones. No llamar sin correa en lugares con riesgo de fuga, tráfico u otros peligros."},
-  {"name": "Ven avanzado 5/5", "kind": "obediencia", "desc": "Evaluación en tres contextos diferentes, comprobando la respuesta con distintos niveles de distracción para detectar dónde necesita más trabajo el perro. No realizar pruebas arriesgadas para «comprobar» la llamada."},
-  {"name": "Juego de seguimiento y cambios de dirección", "kind": "juego", "desc": "Juego de seguimiento con cambios de dirección, preparatorio para el trabajo de «junto»."},
-  {"name": "Junto 1/6", "kind": "obediencia", "desc": "Enseñar la posición aproximada junto a la pierna, recompensando la posición correcta.<br>2 series de 15 repeticiones."},
-  {"name": "Junto 2/6", "kind": "obediencia", "desc": "Realizar pequeños desplazamientos de 3-4 pasos, recompensando con frecuencia.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Juego de movimiento y seguimiento, en línea con el trabajo de «junto»."},
-  {"name": "Junto 3/6", "kind": "obediencia", "desc": "Aumentar progresivamente los pasos, reduciendo la dependencia del premio en la mano que guía.<br>2 series de 15 repeticiones."},
-  {"name": "Junto 4/6", "kind": "obediencia", "desc": "Introducir la palabra «junto»: «Junto» → gesto → posición → movimiento → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de cambios de ritmo y dirección", "kind": "juego", "desc": "Juego centrado en cambios de ritmo y dirección."},
-  {"name": "Junto 5/6", "kind": "obediencia", "desc": "Introducir cambios de velocidad y pequeños giros.<br>2 series de 15 repeticiones."},
-  {"name": "Junto 6/6", "kind": "obediencia", "desc": "Introducir distracciones moderadas, trabajando el «junto» en tramos cortos y precisos.<br>2 series de 15 repeticiones. El «junto» no es una posición obligatoria durante todo el paseo: es una conducta de precisión para momentos concretos."},
-  {"name": "Juego con juguetes e intercambios voluntarios", "kind": "juego", "desc": "Juego con juguetes, practicando intercambios voluntarios sin usar todavía las órdenes de forma insistente."},
-  {"name": "Suelta 1/5", "kind": "obediencia", "desc": "Trabajar la liberación de un objeto de poco valor: cuando el perro lo tenga, presentar una recompensa; cuando lo suelte, click → recompensa.<br>2 series de 15 repeticiones. No quitar físicamente el objeto de la boca de forma rutinaria."},
-  {"name": "Suelta 2/5", "kind": "obediencia", "desc": "Aumentar progresivamente el valor del objeto, manteniendo el intercambio positivo y devolviendo el objeto al perro ocasionalmente después de soltarlo.<br>2 series de 15 repeticiones. Objetivo: que «soltar» no signifique siempre perder el objeto para siempre."},
-  {"name": "Juego de intercambio de juguetes", "kind": "juego", "desc": "Alternar juguetes para fomentar la entrega voluntaria."},
-  {"name": "Suelta 3/5", "kind": "obediencia", "desc": "Introducir la palabra «suelta» antes de presentar la recompensa: «Suelta» → liberación del objeto → click → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Deja 4/5", "kind": "obediencia", "desc": "Introducir «deja» (no coger / apartarse de algo), distinto de «suelta»: presentar un objeto de bajo valor y, antes de que el perro lo coja, «Deja» → el perro se aparta o mira al entrenador → click → recompensa.<br>2 series de 15 repeticiones. No confundir «deja» con «suelta»."},
-  {"name": "Suelta / Deja 5/5", "kind": "obediencia", "desc": "Trabajar ambos conceptos de forma diferenciada: deja = no coger algo; suelta = liberar algo que ya está en la boca.<br>2 series de 15 oportunidades, con objetos seguros y dificultad progresiva. Con objetos peligrosos, prioridad absoluta a la gestión y seguridad, no a improvisar una prueba de entrenamiento."},
-  {"name": "Juego con juguetes apropiados", "kind": "juego", "desc": "Fomentar la interacción voluntaria con el juguete y los intercambios positivos."},
-  {"name": "Cobro 1/6", "kind": "obediencia", "desc": "Presentar un objeto: cuando el perro lo coja, click → recompensa. Después trabajar la liberación en la mano mediante «suelta».<br>2 series de 15 repeticiones."},
-  {"name": "Cobro 2/6", "kind": "obediencia", "desc": "Colocar el objeto a poca distancia, favoreciendo la secuencia coger → volver → entregar (se puede usar «ven» para facilitar el retorno).<br>2 series de 15 repeticiones."},
-  {"name": "Juego de intercambio de juguetes", "kind": "juego", "desc": "Alternar brevemente juego libre, entrega del objeto y vuelta al juego."},
-  {"name": "Cobro 3/6", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia del objeto, manteniendo la secuencia completa coger → volver → entregar.<br>2 series de 15 repeticiones."},
-  {"name": "Cobro 4/6", "kind": "obediencia", "desc": "Introducir la palabra «trae», asociada a toda la secuencia de recuperación (no solo al momento de lanzar el objeto): «Trae» → objeto → coger → volver → entregar → recompensa.<br>2 series de 15 repeticiones."},
-  {"name": "Juego de cobro", "kind": "juego", "desc": "Momentos de juego libre con el objeto, realizando intercambios positivos."},
-  {"name": "Cobro 5/6", "kind": "obediencia", "desc": "Trabajar la entrega directamente en la mano, reduciendo progresivamente las ayudas.<br>2 series de 15 repeticiones."},
-  {"name": "Cobro 6/6", "kind": "obediencia", "desc": "Introducir pequeñas distracciones manteniendo la secuencia completa.<br>2 series de 15 repeticiones. Si la distracción provoca errores, reducirla y continuar."},
-  {"name": "Juego de olfato en un contexto diferente", "kind": "juego", "desc": "Juego de olfato en un entorno nuevo y seguro, permitiendo exploración controlada."},
-  {"name": "Generalización 1/5", "kind": "obediencia", "desc": "Practicar conductas básicas (sentado, tumbado, quieto, ven) en un entorno nuevo, con correa y recompensas adecuadas.<br>2 series de 15 repeticiones por ejercicio seleccionado. No buscar máxima dificultad: el objetivo es trasladar las habilidades a otro contexto."},
-  {"name": "Generalización 2/5", "kind": "obediencia", "desc": "Practicar conductas avanzadas (mírame, junto, ven, quieto, suelta/deja) en un entorno diferente, dentro de las posibilidades del perro.<br>Las 110 sesiones siguen siendo obligatorias independientemente del resultado."},
-  {"name": "Juego de búsqueda y olfato en un entorno nuevo", "kind": "juego", "desc": "Esconder premios en lugares sencillos y progresar gradualmente, evitando situaciones peligrosas o elementos que puedan ingerirse."},
-  {"name": "Generalización 3/5", "kind": "obediencia", "desc": "Introducir progresivamente más estímulos (personas, ruidos, movimiento, nuevos lugares, diferentes superficies), trabajando las conductas ya aprendidas.<br>2 series de 15 repeticiones por ejercicio trabajado. No aumentar todas las distracciones a la vez."},
-  {"name": "Generalización 4/5", "kind": "obediencia", "desc": "Sesión combinada integrando varias conductas (sentado, tumbado, quieto, ven, mírame, junto, suelta/deja, trae), cambiando contexto y dificultad de forma progresiva.<br>2 series de 15 repeticiones por ejercicio trabajado. Si una conducta falla repetidamente, facilitarla y continuar; si hace falta, repetir después una sesión anterior concreta."},
-  {"name": "Generalización 5/5 — Evaluación final", "kind": "obediencia", "desc": "Evaluación global del programa: sentado, tumbado, quieto, ven, caminar con correa floja, mírame, junto, suelta, deja y trae en diferentes contextos.<br>Valorar comprensión de señales, calidad de respuestas, trabajo con distracciones, recuperación tras un error, generalización, conexión con el entrenador y mantenimiento de conductas.<br>No usar situaciones de riesgo (perros desconocidos sin control, tráfico, etc.). Al terminar, las 110 sesiones se consideran completadas, pero las conductas deben mantenerse después con práctica, variabilidad y refuerzo."},
+  {"name": "Juego de conexión y orientación voluntaria", "kind": "juego", "desc": "Juego de conexión y orientación voluntaria hacia el entrenador.<br><br>No utilizar clicker."},
+  {"name": "Mírame 1/5", "kind": "obediencia", "desc": "Reforzar la orientación visual hacia el entrenador.<br><br>Al principio se puede utilizar comida cerca de los ojos como ayuda.<br><br>Cuando el perro mire: click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Mírame 2/5", "kind": "obediencia", "desc": "Reducir progresivamente la comida cerca de la cara.<br><br>Premiar desde la otra mano.<br><br>Buscar que el perro mire al entrenador, no simplemente que siga la comida.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de seguimiento y conexión", "kind": "juego", "desc": "Juego de seguimiento y conexión.<br><br>Reforzar también los momentos en que el perro busca voluntariamente al entrenador."},
+  {"name": "Mírame 3/5", "kind": "obediencia", "desc": "Introducir pequeñas distracciones.<br><br>Premiar especialmente las orientaciones espontáneas hacia el entrenador.<br><br>2 series de 15 repeticiones."},
+  {"name": "Mírame 4/5", "kind": "obediencia", "desc": "Introducir la palabra «mírame».<br><br>«Mírame» → gesto → mirada → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Mírame 5/5", "kind": "obediencia", "desc": "Trabajar la conducta en diferentes posiciones y contextos.<br><br>Utilizarla como herramienta de conexión antes de otros ejercicios, sin exigir contacto visual constante.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego con autocontrol y pequeñas distracciones", "kind": "juego", "desc": "Juego con autocontrol y pequeñas distracciones."},
+  {"name": "Quieto avanzado 1/5", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia.<br><br>Trabajar aproximadamente 3 metros cuando el perro pueda mantener correctamente la posición.<br><br>Regresar al perro antes de recompensar.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto avanzado 2/5", "kind": "obediencia", "desc": "Introducir breves momentos en los que el entrenador desaparece parcialmente de la vista.<br><br>Realizarlo únicamente en un entorno seguro.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego con pequeñas distracciones ambientales", "kind": "juego", "desc": "Juego con pequeñas distracciones ambientales."},
+  {"name": "Quieto avanzado 3/5", "kind": "obediencia", "desc": "Introducir personas pasando a distancia.<br><br>La distracción debe ser suficientemente baja como para permitir respuestas correctas.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto avanzado 4/5", "kind": "obediencia", "desc": "Introducir movimiento de objetos.<br><br>Comenzar con movimientos lentos y alejados.<br><br>Posteriormente se puede aumentar ligeramente la intensidad.<br><br>2 series de 15 repeticiones."},
+  {"name": "Quieto avanzado 5/5", "kind": "obediencia", "desc": "Trabajar una permanencia más larga con distracciones moderadas.<br><br>No combinar de golpe demasiadas dificultades.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de llamada y retorno voluntario", "kind": "juego", "desc": "Juego de llamada y retorno voluntario.<br><br>Reforzar que volver al entrenador no significa siempre que se acaba la diversión."},
+  {"name": "Ven avanzado 1/5", "kind": "obediencia", "desc": "Introducir una persona como distracción controlada.<br><br>La persona permanecerá neutral.<br><br>Realizar 2 series de 15 repeticiones."},
+  {"name": "Ven avanzado 2/5", "kind": "obediencia", "desc": "Introducir juguetes u objetos interesantes en el entorno.<br><br>Llamar únicamente cuando exista una probabilidad razonable de éxito.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego con juguetes y búsqueda", "kind": "juego", "desc": "Juego con juguetes y búsqueda.<br><br>Practicar pequeñas interrupciones y posterior vuelta al juego."},
+  {"name": "Ven avanzado 3/5", "kind": "obediencia", "desc": "Introducir otro perro como distracción únicamente de forma controlada y a una distancia adecuada.<br><br>Utilizar correa larga cuando sea necesario.<br><br>2 series de 15 repeticiones."},
+  {"name": "Ven avanzado 4/5", "kind": "obediencia", "desc": "Trabajar en un entorno exterior con estímulos.<br><br>Utilizar siempre medidas de seguridad adecuadas.<br><br>2 series de 15 repeticiones.<br><br>No realizar llamadas sin correa en lugares donde exista riesgo de fuga, tráfico u otros peligros."},
+  {"name": "Ven avanzado 5/5", "kind": "obediencia", "desc": "Evaluación en tres contextos diferentes.<br><br>Comprobar la respuesta con diferentes niveles de distracción.<br><br>La evaluación sirve para detectar dónde necesita más trabajo el perro.<br><br>No se realizarán pruebas arriesgadas para «comprobar» la llamada."},
+  {"name": "Juego de seguimiento y cambios de dirección", "kind": "juego", "desc": "Juego de seguimiento y cambios de dirección."},
+  {"name": "Junto 1/6", "kind": "obediencia", "desc": "Enseñar la posición aproximada junto a la pierna.<br><br>Recompensar la posición correcta.<br><br>2 series de 15 repeticiones."},
+  {"name": "Junto 2/6", "kind": "obediencia", "desc": "Realizar pequeños desplazamientos de 3-4 pasos.<br><br>Recompensar frecuentemente.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de movimiento y seguimiento", "kind": "juego", "desc": "Juego de movimiento y seguimiento."},
+  {"name": "Junto 3/6", "kind": "obediencia", "desc": "Aumentar progresivamente los pasos.<br><br>Reducir la dependencia del premio en la mano que guía.<br><br>2 series de 15 repeticiones."},
+  {"name": "Junto 4/6", "kind": "obediencia", "desc": "Introducir la palabra «junto».<br><br>«Junto» → gesto → posición → movimiento → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de cambios de ritmo y dirección", "kind": "juego", "desc": "Juego de cambios de ritmo y dirección."},
+  {"name": "Junto 5/6", "kind": "obediencia", "desc": "Introducir cambios de velocidad y pequeños giros.<br><br>2 series de 15 repeticiones."},
+  {"name": "Junto 6/6", "kind": "obediencia", "desc": "Introducir distracciones moderadas.<br><br>Trabajar el junto en tramos cortos y precisos.<br><br>2 series de 15 repeticiones.<br><br>El «junto» no debe utilizarse como posición obligatoria durante todo el paseo. Es una conducta de precisión para momentos concretos."},
+  {"name": "Juego con juguetes e intercambios voluntarios", "kind": "juego", "desc": "Juego con juguetes.<br><br>Practicar intercambios voluntarios sin utilizar todavía las órdenes de forma insistente."},
+  {"name": "Suelta 1/5", "kind": "obediencia", "desc": "Trabajar la liberación de un objeto de poco valor.<br><br>Cuando el perro tenga el objeto, presentar una recompensa.<br><br>Cuando lo suelte: click → recompensa.<br><br>2 series de 15 repeticiones.<br><br>No quitar físicamente el objeto de la boca de forma rutinaria."},
+  {"name": "Suelta 2/5", "kind": "obediencia", "desc": "Aumentar progresivamente el valor del objeto.<br><br>Mantener el intercambio positivo.<br><br>2 series de 15 repeticiones.<br><br>Ocasionalmente, después de soltar el objeto, devolverlo al perro.<br><br>El objetivo es que «soltar» no signifique siempre «perder el objeto para siempre»."},
+  {"name": "Juego de intercambio de juguetes", "kind": "juego", "desc": "Juego de intercambio de juguetes.<br><br>Alternar juguetes para fomentar la entrega voluntaria."},
+  {"name": "Suelta 3/5", "kind": "obediencia", "desc": "Introducir la palabra «suelta» antes de presentar la recompensa.<br><br>«Suelta» → liberación del objeto → click → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Deja 4/5", "kind": "obediencia", "desc": "Introducir un comportamiento diferente: «deja» = no coger / apartarse de algo.<br><br>Presentar un objeto de bajo valor.<br><br>Antes de que el perro lo coja: «Deja» → perro se aparta o te mira → click → recompensa.<br><br>2 series de 15 repeticiones.<br><br>No confundir «deja» con «suelta»."},
+  {"name": "Suelta / Deja 5/5", "kind": "obediencia", "desc": "Trabajar ambos conceptos de forma diferenciada.<br><br>DEJA: no coger algo.<br>SUELTA: liberar algo que ya está en la boca.<br><br>Realizar 2 series de 15 oportunidades.<br><br>Utilizar objetos seguros y de dificultad progresiva.<br><br>Para objetos peligrosos, la prioridad será la gestión y seguridad, no realizar una prueba de entrenamiento improvisada."},
+  {"name": "Juego con juguetes apropiados", "kind": "juego", "desc": "Juego con juguetes apropiados.<br><br>Fomentar la interacción voluntaria con el juguete y los intercambios positivos."},
+  {"name": "Cobro 1/6", "kind": "obediencia", "desc": "Presentar un objeto.<br><br>Cuando el perro lo coja: click → recompensa.<br><br>Posteriormente trabajar la liberación en la mano mediante «suelta».<br><br>2 series de 15 repeticiones."},
+  {"name": "Cobro 2/6", "kind": "obediencia", "desc": "Colocar el objeto a poca distancia.<br><br>Favorecer: coger → volver → entregar.<br><br>Se puede utilizar la llamada «ven» cuando sea necesario para facilitar el retorno.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de intercambio de juguetes", "kind": "juego", "desc": "Juego de intercambio de juguetes.<br><br>Alternar brevemente juego, entrega y vuelta al juego."},
+  {"name": "Cobro 3/6", "kind": "obediencia", "desc": "Aumentar progresivamente la distancia del objeto.<br><br>Mantener la secuencia completa: coger → volver → entregar.<br><br>2 series de 15 repeticiones."},
+  {"name": "Cobro 4/6", "kind": "obediencia", "desc": "Introducir la palabra «trae».<br><br>La palabra deberá asociarse a la secuencia completa de recuperación, no únicamente al momento de lanzar el objeto.<br><br>«Trae» → objeto → coger → volver → entregar → recompensa.<br><br>2 series de 15 repeticiones."},
+  {"name": "Juego de cobro", "kind": "juego", "desc": "Juego de cobro.<br><br>Permitir momentos de juego libre con el objeto y realizar intercambios positivos."},
+  {"name": "Cobro 5/6", "kind": "obediencia", "desc": "Trabajar la entrega directamente en la mano.<br><br>Reducir progresivamente las ayudas.<br><br>2 series de 15 repeticiones."},
+  {"name": "Cobro 6/6", "kind": "obediencia", "desc": "Introducir pequeñas distracciones.<br><br>Mantener la secuencia completa.<br><br>2 series de 15 repeticiones.<br><br>Si la distracción provoca errores, reducirla y continuar."},
+  {"name": "Juego de olfato en un contexto diferente", "kind": "juego", "desc": "Juego de olfato en un contexto diferente.<br><br>Utilizar un entorno seguro y permitir exploración controlada."},
+  {"name": "Generalización 1/5", "kind": "obediencia", "desc": "Practicar conductas básicas en un entorno nuevo.<br><br>Trabajar, según las necesidades:<br>• sentado.<br>• tumbado.<br>• quieto.<br>• ven.<br><br>Utilizar correa y recompensas adecuadas.<br><br>Realizar 2 series de 15 repeticiones para cada ejercicio seleccionado según el formato de la sesión.<br><br>No buscar máxima dificultad. El objetivo es trasladar las habilidades a otro contexto."},
+  {"name": "Generalización 2/5", "kind": "obediencia", "desc": "Practicar conductas avanzadas en un entorno diferente.<br><br>Trabajar:<br>• mírame.<br>• junto.<br>• ven.<br>• quieto.<br>• suelta/deja.<br><br>Mantener la dificultad dentro de las posibilidades del perro.<br><br>Las 110 sesiones siguen siendo obligatorias independientemente del resultado."},
+  {"name": "Juego de búsqueda y olfato en un entorno nuevo", "kind": "juego", "desc": "Juego de búsqueda y olfato en un entorno nuevo y seguro.<br><br>Se pueden esconder premios en lugares sencillos y progresar gradualmente.<br><br>Evitar situaciones peligrosas o elementos que puedan ser ingeridos."},
+  {"name": "Generalización 3/5", "kind": "obediencia", "desc": "Introducir progresivamente más estímulos:<br>• personas.<br>• ruidos.<br>• movimiento.<br>• nuevos lugares.<br>• diferentes superficies.<br><br>Trabajar las conductas ya aprendidas.<br><br>No aumentar todas las distracciones al mismo tiempo.<br><br>2 series de 15 repeticiones por ejercicio trabajado."},
+  {"name": "Generalización 4/5", "kind": "obediencia", "desc": "Realizar una sesión combinada.<br><br>Integrar diferentes conductas:<br>• sentado.<br>• tumbado.<br>• quieto.<br>• ven.<br>• mírame.<br>• junto.<br>• suelta/deja.<br>• trae.<br><br>Cambiar el contexto y la dificultad de forma progresiva.<br><br>2 series de 15 repeticiones por ejercicio trabajado.<br><br>Si una conducta falla repetidamente, facilitarla y continuar.<br><br>Si es necesario, posteriormente se podrá repetir una sesión anterior específica."},
+  {"name": "Generalización 5/5 — Evaluación final", "kind": "obediencia", "desc": "Evaluación global del programa.<br><br>Trabajar las principales conductas aprendidas en diferentes contextos:<br>• sentado.<br>• tumbado.<br>• quieto.<br>• ven.<br>• caminar con correa sin tensión.<br>• mírame.<br>• junto.<br>• suelta.<br>• deja.<br>• trae.<br><br>La evaluación deberá valorar:<br>• comprensión de las señales.<br>• calidad de las respuestas.<br>• capacidad para trabajar con distracciones.<br>• recuperación después de un error.<br>• capacidad para generalizar.<br>• conexión con el entrenador.<br>• mantenimiento de las conductas.<br><br>La evaluación no debe convertirse en una prueba de riesgo.<br><br>No se utilizarán situaciones peligrosas, perros desconocidos sin control, tráfico u otras circunstancias que puedan comprometer la seguridad.<br><br>Las 110 sesiones se consideran completadas al finalizar esta sesión, pero el entrenamiento no termina aquí: las conductas deberán mantenerse posteriormente mediante práctica, variabilidad y refuerzo."},
 ];
 const BEHAVIOR_TEMPLATE = [
   {name:'Evaluación inicial del problema', kind:'simple', desc:'Observación y registro del comportamiento problemático.'},
@@ -899,7 +899,9 @@ const MASCOT_IMAGES = {
 function parseDate(s){ return new Date(s+'T00:00:00'); }
 function fmtDate(d){ return d.toISOString().slice(0,10); }
 function addDays(s,n){ const d=parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); }
+function addMonths(s,n){ const d=parseDate(s); d.setMonth(d.getMonth()+n); return fmtDate(d); }
 function daysBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
+function mondayOfWeek(s){ const dow=parseDate(s).getDay(); const offset=(dow+6)%7; return addDays(s,-offset); }
 function monthKey(s){ return s.slice(0,7); }
 function dowLabel(s){ return ['dom','lun','mar','mié','jue','vie','sáb'][parseDate(s).getDay()]; }
 function humanDate(s){
@@ -1230,11 +1232,6 @@ function renderSession(){
   const box = document.getElementById('sessionInteraction');
   if(sessionObj.kind==='juego'){
     box.innerHTML = `<button class="btn" onclick="completeSession('confirm')">🎾 Confirmar sesión completada</button>`;
-  } else if(sessionObj.kind==='obediencia'){
-    const ranges = [['1-2','⭐'],['3-4','⭐⭐'],['5-6','⭐⭐⭐'],['7-8','⭐⭐⭐⭐'],['9-10','⭐⭐⭐⭐⭐']];
-    box.innerHTML = `<p class="card-sub" style="margin-bottom:6px;">¿Cuántos aciertos sobre 10 ha tenido?</p><div class="face-row">${
-      ranges.map(r=>`<div class="face-btn" onclick="completeSession('${r[0]}')">${r[1]}<small>${r[0]}</small></div>`).join('')
-    }</div>`;
   } else {
     const faces = [['😖','Difícil'],['😐','Regular'],['🙂','Bien'],['😄','¡Genial!']];
     box.innerHTML = `<p class="card-sub" style="margin-bottom:6px;">¿Cómo se ha sentido tu perro?</p><div class="face-row">${
@@ -1636,7 +1633,27 @@ function payResidenceBooking(){
 }
 
 let guarderiaDogSelection = null; // dogId o 'both'
+let guarderiaSelectedMonday = null;
 let pendingGuarderiaBooking = null;
+function guarderiaUsableDaysForWeek(monday){
+  const today = S.meta.simDate;
+  const friday = addDays(monday,4);
+  const start = monday>today ? monday : addDays(today,1);
+  const days=[];
+  let d=start;
+  while(d<=friday){ days.push(d); d=addDays(d,1); }
+  return days;
+}
+function guarderiaLostDaysForWeek(monday){
+  const today = S.meta.simDate;
+  const friday = addDays(monday,4);
+  if(monday>today) return [];
+  const end = today<friday ? today : friday;
+  const days=[];
+  let d=monday;
+  while(d<=end){ days.push(d); d=addDays(d,1); }
+  return days;
+}
 function renderGuarderia(){
   const c = activeClient();
   document.getElementById('guarderiaBankVal').textContent = c.xpBank + ' XP';
@@ -1653,6 +1670,8 @@ function renderGuarderia(){
     guarderiaDogSelection = c.dogs[0].id;
     box.innerHTML = '';
   }
+  guarderiaSelectedMonday = null;
+  renderGuarderiaDayGrid();
   renderGuarderiaResult();
 }
 function pickGuarderiaDog(sel){
@@ -1660,20 +1679,58 @@ function pickGuarderiaDog(sel){
   document.querySelectorAll('#guarderiaDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.sel===sel));
   renderGuarderiaResult();
 }
+function renderGuarderiaDayGrid(){
+  const grid = document.getElementById('guarderiaDayGrid');
+  const today = S.meta.simDate;
+  const cutoff = addMonths(today,1);
+  let html='';
+  let d = today;
+  while(d<=cutoff){
+    const dow = parseDate(d).getDay();
+    const isWeekend = dow===0 || dow===6;
+    const monday = mondayOfWeek(d);
+    const weekDisabled = !isWeekend && guarderiaUsableDaysForWeek(monday).length===0;
+    const closed = isWeekend || weekDisabled;
+    const selected = !closed && guarderiaSelectedMonday===monday;
+    html += `<div class="daycell ${closed?'closed':''} ${selected?'selected':''}" data-date="${d}" onclick="${closed?'':`pickGuarderiaWeek('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+    d = addDays(d,1);
+  }
+  grid.innerHTML = html;
+}
+function pickGuarderiaWeek(d){
+  guarderiaSelectedMonday = mondayOfWeek(d);
+  renderGuarderiaDayGrid();
+  renderGuarderiaResult();
+}
 function renderGuarderiaResult(){
   const c = activeClient();
+  const box = document.getElementById('guarderiaResult');
+  if(!guarderiaSelectedMonday){
+    pendingGuarderiaBooking = null;
+    box.innerHTML = `<div class="note-box">Elige una semana en el calendario.</div>`;
+    return;
+  }
+  const monday = guarderiaSelectedMonday;
+  const friday = addDays(monday,4);
+  const lost = guarderiaLostDaysForWeek(monday);
   const dogIds = guarderiaDogSelection==='both' ? c.dogs.map(d=>d.id) : [guarderiaDogSelection];
   const total = dogIds.length * GUARDERIA_PRICE_PER_DOG;
   const discount = Math.min(c.xpBank*XP_TO_EUR, total);
   const final = (total-discount).toFixed(2);
   const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
-  pendingGuarderiaBooking = {dogIds, total, discount};
-  document.getElementById('guarderiaResult').innerHTML = `
+  const serviceStart = guarderiaUsableDaysForWeek(monday)[0];
+  pendingGuarderiaBooking = {weekStart:monday, weekEnd:friday, serviceStart, dogIds, total, discount};
+  const lostNote = lost.length
+    ? `<div class="note-box">Esta semana ya ha empezado: se dan por perdidos ${lost.map(humanDate).join(' y ')}. El servicio empezaría el ${humanDate(serviceStart)}.</div>`
+    : '';
+  box.innerHTML = `
+    ${lostNote}
     <div class="pricebox">
+      <div class="line"><span>Semana</span><span>${humanDate(monday)} → ${humanDate(friday)}</span></div>
       <div class="line"><span>Perro(s): ${escapeHtml(dogNames)}</span><span></span></div>
       <div class="line"><span>${dogIds.length} perro(s) x ${GUARDERIA_PRICE_PER_DOG}€/semana</span><span>${total.toFixed(2)}€</span></div>
       <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
-      <div class="line tot"><span>Total a pagar (primera semana)</span><span>${final}€</span></div>
+      <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
     </div>
     <button class="btn" onclick="payGuarderiaBooking()">Contratar y pagar (simulado)</button>`;
 }
@@ -1682,14 +1739,16 @@ function payGuarderiaBooking(){
   const b = pendingGuarderiaBooking;
   if(!b) return;
   c.bookingsGuarderia.push({
+    weekStart:b.weekStart, weekEnd:b.weekEnd, serviceStart:b.serviceStart,
     dogIds:b.dogIds, total:b.total, discount:b.discount, paidAmount:b.total-b.discount, paid:true,
-    createdSimDate:S.meta.simDate, recurring:true,
-    schedule:'Lunes a viernes · recogida a domicilio 9:15–9:45 · regreso a casa 13:00–13:45',
+    createdSimDate:S.meta.simDate,
+    schedule:'Recogida a domicilio 9:15–9:45 · regreso a casa 13:00–13:45',
   });
   c.xpBank = 0;
   const dogNames = joinNames(b.dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería de mañana confirmada', body:`${dogNames}: lunes a viernes, recogida 9:15–9:45 y regreso 13:00–13:45.`, read:false});
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería de mañana confirmada', body:`${dogNames}: semana del ${humanDate(b.weekStart)} al ${humanDate(b.weekEnd)}, recogida 9:15–9:45 y regreso 13:00–13:45.`, read:false});
   pendingGuarderiaBooking = null;
+  guarderiaSelectedMonday = null;
   saveState();
   showToast('¡Guardería confirmada! Tu hucha se ha puesto a 0.', {icon:'🐕'});
   goHome();
@@ -1703,9 +1762,7 @@ function trainingBookingsOnDate(c, date){
 }
 function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
 function guarderiaBookingsOnDate(c, date){
-  const dow = parseDate(date).getDay(); // 0=domingo ... 6=sábado
-  const isWeekday = dow>=1 && dow<=5;
-  return c.bookingsGuarderia.filter(b=> !b.cancelled && b.paid && b.recurring && isWeekday);
+  return c.bookingsGuarderia.filter(b=> !b.cancelled && b.paid && date>=b.serviceStart && date<=b.weekEnd);
 }
 function clientBookingsOnDate(c, date){
   return [
@@ -1731,7 +1788,7 @@ function agendaItemLine(c, it){
   }
   const names = joinNames(it.b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
   if(it.kind==='guarderia'){
-    return `🐕 Guardería de mañana — ${escapeHtml(names)} (🔁 ${it.b.schedule})`;
+    return `🐕 Guardería de mañana — ${escapeHtml(names)} (${it.b.schedule}, semana del ${humanDate(it.b.weekStart)} al ${humanDate(it.b.weekEnd)})`;
   }
   return `🏠 Residencia — ${escapeHtml(names)} (${humanDate(it.b.checkin)} → ${humanDate(it.b.checkout)})`;
 }
@@ -2185,7 +2242,7 @@ function openClientModal(id){
     const right = b.cancelled
       ? `<span style="color:var(--danger);font-weight:800;font-size:11px;white-space:nowrap;">Cancelada</span>`
       : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelGuarderiaBooking('${c.id}',${i})">Cancelar</button>`;
-    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${humanDate(b.createdSimDate)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€/semana)</span>${right}</div>`;
+    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${humanDate(b.weekStart)} → ${humanDate(b.weekEnd)} — ${escapeHtml(names)} (${b.paidAmount.toFixed(2)}€)</span>${right}</div>`;
   }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
   document.getElementById('clientModalBody').innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
