@@ -386,7 +386,6 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
     <button onclick="debugResetState()">Reiniciar datos</button>
   </div>
 </div>
-<div id="clickTrace" style="width:390px;max-width:100%;margin:0 auto 14px;background:#0b2a1c;color:#9ef0c0;border-radius:12px;padding:8px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-word;">(trazas de navegación aparecerán aquí)</div>
 
 <div class="app-wrap">
   <div class="phone" id="clientAppWrap">
@@ -724,11 +723,11 @@ const STORAGE_KEY = 'balancedog_state_v2';
 const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
 // Horario fijo de adiestramiento: lun/jue mañana 10:00 + tarde 17:30; mar/mié/vie solo mañanas 10:00-11:00-12:00; sáb/dom cerrado.
 function isTrainingWeekend(d){
-  const dow = parseDate(d).getDay(); // 0=domingo ... 6=sábado
+  const dow = parseDate(d).getUTCDay(); // 0=domingo ... 6=sábado
   return dow===0 || dow===6;
 }
 function trainingHoursForDate(d){
-  const dow = parseDate(d).getDay(); // 1=lunes, 4=jueves
+  const dow = parseDate(d).getUTCDay(); // 1=lunes, 4=jueves
   if(dow===1 || dow===4) return ['10:00','17:30'];
   if(dow===2 || dow===3 || dow===5) return ['10:00','11:00','12:00'];
   return [];
@@ -896,18 +895,24 @@ const MASCOT_IMAGES = {
   graduado:  {src:'assets/mascota/graduado.png',   w:73},
 };
 
-/* ---------------- date utils ---------------- */
-function parseDate(s){ return new Date(s+'T00:00:00'); }
+/* ---------------- date utils ----------------
+   Todas las fechas se manejan en UTC puro (nunca hora local): parseDate construye
+   el Date a partir de sus componentes Y/M/D con Date.UTC, y cualquier lectura o
+   escritura usa los métodos getUTC/setUTC correspondientes. Mezclar hora local con toISOString()
+   (que siempre da UTC) desplazaba la fecha un día en husos horarios positivos
+   (ej. España) y provocaba que addDays() no avanzara, colgando los bucles
+   while(fecha<=limite) de los calendarios. */
+function parseDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(Date.UTC(y, m-1, d)); }
 function fmtDate(d){ return d.toISOString().slice(0,10); }
-function addDays(s,n){ const d=parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); }
-function addMonths(s,n){ const d=parseDate(s); d.setMonth(d.getMonth()+n); return fmtDate(d); }
+function addDays(s,n){ const d=parseDate(s); d.setUTCDate(d.getUTCDate()+n); return fmtDate(d); }
+function addMonths(s,n){ const d=parseDate(s); d.setUTCMonth(d.getUTCMonth()+n); return fmtDate(d); }
 function daysBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
-function mondayOfWeek(s){ const dow=parseDate(s).getDay(); const offset=(dow+6)%7; return addDays(s,-offset); }
+function mondayOfWeek(s){ const dow=parseDate(s).getUTCDay(); const offset=(dow+6)%7; return addDays(s,-offset); }
 function monthKey(s){ return s.slice(0,7); }
-function dowLabel(s){ return ['dom','lun','mar','mié','jue','vie','sáb'][parseDate(s).getDay()]; }
+function dowLabel(s){ return ['dom','lun','mar','mié','jue','vie','sáb'][parseDate(s).getUTCDay()]; }
 function humanDate(s){
   const d=parseDate(s);
-  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric', timeZone:'UTC'});
 }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function joinNames(arr){
@@ -933,7 +938,6 @@ function showToast(message, opts){
 function reportAppError(e, context){
   const msg = (e && e.message) ? e.message : String(e);
   console.error('App error', context, e);
-  if(typeof trace==='function') trace('ERROR global '+(context||'')+': '+msg);
   showToast('⚠️ Error ' + (context||'') + ': ' + msg, {type:'warn', duration:7000});
 }
 function showXpReward(amount, subtitle){
@@ -1114,37 +1118,18 @@ function computePetStateDisplay(c, dog){
 
 /* ---------------- navigation ---------------- */
 let navCtx = {};
-function trace(msg){
-  const el = document.getElementById('clickTrace');
-  if(!el) return;
-  const t = new Date().toISOString().slice(11,23);
-  const lines = (el.dataset.lines ? el.dataset.lines.split('\n') : []);
-  lines.push(`[${t}] ${msg}`);
-  while(lines.length>8) lines.shift();
-  el.dataset.lines = lines.join('\n');
-  el.textContent = lines.join('\n');
-}
 function nav(id, ctx){
-  trace('nav("'+id+'") llamada');
   try{
     navCtx = ctx || {};
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     const screenEl = document.getElementById(id);
     if(!screenEl) throw new Error('No existe la pantalla "'+id+'"');
     screenEl.classList.add('active');
-    trace('pantalla "'+id+'" activada');
     const scroller = document.getElementById('phoneScreen');
     if(scroller) scroller.scrollTop = 0;
     const renderer = RENDERERS[id];
-    if(renderer){
-      const t0 = performance.now();
-      renderer();
-      trace('render "'+id+'" OK en '+(performance.now()-t0).toFixed(0)+'ms');
-    } else {
-      trace('sin renderer para "'+id+'"');
-    }
+    if(renderer) renderer();
   }catch(e){
-    trace('ERROR en "'+id+'": '+(e&&e.message?e.message:e));
     console.error('Error al abrir la pantalla', id, e);
     reportAppError(e, 'al abrir la pantalla "'+id+'"');
   }
@@ -1421,7 +1406,7 @@ function renderTrainingDayGrid(){
     const closed = S.admin.calendarClosures.training[d]==='full' || isTrainingWeekend(d);
     const hasSlot = trainingSel.slots.some(s=>s.date===d);
     const isPending = trainingSel.pendingDate===d;
-    html += `<div class="daycell ${closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+    html += `<div class="daycell ${closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
   }
   grid.innerHTML = html;
 }
@@ -1580,7 +1565,7 @@ function payDiyBooking(){
 }
 
 /* ---------------- HUCHA / residencia ---------------- */
-function openResidenceFromBank(){ trace('tarjeta Hucha de XP pulsada'); nav('screenHuchaServices'); }
+function openResidenceFromBank(){ nav('screenHuchaServices'); }
 function renderHuchaServices(){
   const c = activeClient();
   document.getElementById('huchaServicesBankVal').textContent = c.xpBank + ' XP';
@@ -1738,13 +1723,13 @@ function renderGuarderiaDayGrid(){
   let html='';
   let d = today;
   while(d<=cutoff){
-    const dow = parseDate(d).getDay();
+    const dow = parseDate(d).getUTCDay();
     const isWeekend = dow===0 || dow===6;
     const monday = mondayOfWeek(d);
     const weekDisabled = !isWeekend && guarderiaUsableDaysForWeek(monday).length===0;
     const closed = isWeekend || weekDisabled;
     const selected = !closed && guarderiaSelectedMonday===monday;
-    html += `<div class="daycell ${closed?'closed':''} ${selected?'selected':''}" data-date="${d}" onclick="${closed?'':`pickGuarderiaWeek('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+    html += `<div class="daycell ${closed?'closed':''} ${selected?'selected':''}" data-date="${d}" onclick="${closed?'':`pickGuarderiaWeek('${d}')`}">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
     d = addDays(d,1);
   }
   grid.innerHTML = html;
@@ -1808,7 +1793,7 @@ function payGuarderiaBooking(){
 
 /* ---------------- AGENDA (cliente + admin) ---------------- */
 function trainingBookingsOnDate(c, date){
-  const dow = parseDate(date).getDay(); // 0=domingo ... 1=lunes ... 4=jueves
+  const dow = parseDate(date).getUTCDay(); // 0=domingo ... 1=lunes ... 4=jueves
   const isDiyDay = dow===1 || dow===4;
   return c.bookingsTraining.filter(b=> !b.cancelled && (b.date===date || (b.recurring && isDiyDay)));
 }
@@ -1853,7 +1838,7 @@ function renderAgenda(){
   for(let i=0;i<30;i++){
     const d = addDays(S.meta.simDate, i);
     const has = clientBookingsOnDate(c,d).length>0;
-    html += `<div class="daycell ${has?'has-booking':''}" data-date="${d}" onclick="pickAgendaDay('${d}')">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+    html += `<div class="daycell ${has?'has-booking':''}" data-date="${d}" onclick="pickAgendaDay('${d}')">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
   }
   grid.innerHTML = html;
   pickAgendaDay(S.meta.simDate);
@@ -1881,7 +1866,7 @@ function renderAdminAgenda(){
     const d = addDays(S.meta.simDate, i);
     const items = allBookingsOnDate(d);
     html += `<div class="admin-daycell ${items.length?'has-booking':''}" data-date="${d}" onclick="pickAdminAgendaDay('${d}')">
-      ${parseDate(d).getDate()}<small>${dowLabel(d)}</small>${items.length?`<span class="badge-count">${items.length}</span>`:''}
+      ${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small>${items.length?`<span class="badge-count">${items.length}</span>`:''}
     </div>`;
   }
   grid.innerHTML = html;
@@ -2210,7 +2195,7 @@ function renderAdminCalendar(){
       }).join('')}</div>`;
     }
     html += `<div class="admin-daycell ${closed?'closed':''}">
-      <div class="ad-daytoggle" onclick="${weekendTraining?'':`adminToggleDay('${tab}','${d}')`}">${parseDate(d).getDate()}<small>${dowLabel(d)}</small></div>
+      <div class="ad-daytoggle" onclick="${weekendTraining?'':`adminToggleDay('${tab}','${d}')`}">${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small></div>
       ${hoursHtml}
     </div>`;
   }
@@ -2442,7 +2427,7 @@ function debugSetDate(v){
 }
 function debugGotoNextMonth(){
   const d = parseDate(S.meta.simDate);
-  d.setMonth(d.getMonth()+1, 1);
+  d.setUTCMonth(d.getUTCMonth()+1, 1);
   S.meta.simDate = fmtDate(d);
   saveState();
   afterDateChange();
