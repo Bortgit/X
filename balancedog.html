@@ -423,7 +423,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="card" onclick="openResidenceFromBank()" style="cursor:pointer;">
             <div class="card-icon-row">
               <div>
-                <div class="card-title">🏠 Hucha de XP Total</div>
+                <div class="card-title">🏠 Hucha de XP para residencia</div>
                 <div class="xp-value" id="xpBankVal">0 XP</div>
               </div>
               <div class="card-icon">🐕‍🦺</div>
@@ -916,11 +916,6 @@ function normalize(){
 /* ---------------- per-dog / per-account helpers ---------------- */
 function usedSessionToday(dog){ return dog.lastTrainingSessionDate === S.meta.simDate; }
 function xpAlreadyGrantedToday(c){ return c.lastXpGrantedDate === S.meta.simDate; }
-function dogHasCompletedAll(dog){
-  return dog.courses.basico.completed && dog.courses.avanzado.completed
-    && dog.behaviorProblems.every(b=>b.status==='completed');
-}
-function accountEligibleForReadingBonus(c){ return c.dogs.every(dogHasCompletedAll); }
 function readingBonusAmount(c){ return c.dogs.length>=2 ? 1300 : 800; }
 function canDoEvaluation(dog){ return dog.evaluations.length===0 || dog.evalReenabled; }
 
@@ -1616,7 +1611,6 @@ function renderLectura(){
   const c = activeClient();
   const r = S.monthlyReading;
   const claimed = c.lecturaClaimedIds.includes(r.id);
-  const eligible = accountEligibleForReadingBonus(c);
   const bonus = readingBonusAmount(c);
   let preview;
   if(r.dataUrl && r.mime && r.mime.startsWith('image/')){
@@ -1626,15 +1620,9 @@ function renderLectura(){
   } else {
     preview = `<div class="placeholder-img"><span class="em">📄</span>Aquí se mostraría el PDF/imagen real de la lectura mensual</div>`;
   }
-  let action;
-  if(!eligible){
-    const pending = c.dogs.filter(d=>!dogHasCompletedAll(d)).map(d=>d.name).join(', ');
-    action = `<div class="note-box">Los XP de esta lectura (${bonus} XP) solo se otorgan cuando todos tus perros han completado todo el contenido (básico, avanzado y toda la conducta). Aún falta: ${escapeHtml(pending)}. Mientras tanto, sigue ganando 25 XP por sesión.</div>`;
-  } else if(claimed){
-    action = `<button class="btn" style="margin-top:14px;" disabled>Ya reclamada esta lectura ✅</button>`;
-  } else {
-    action = `<button class="btn" style="margin-top:14px;" onclick="claimReading()">Marcar como leída y reclamar ${bonus} XP</button>`;
-  }
+  const action = claimed
+    ? `<div class="note-box">✅ Ya has marcado esta lectura como leída este mes.</div>`
+    : `<button class="btn" style="margin-top:14px;" onclick="claimReading()">Leído</button>`;
   document.getElementById('lecturaBody').innerHTML = `
     <div class="card">
       <div class="card-title">${escapeHtml(r.title)}</div>
@@ -1646,7 +1634,7 @@ function renderLectura(){
 function claimReading(){
   const c = activeClient();
   const r = S.monthlyReading;
-  if(!accountEligibleForReadingBonus(c) || c.lecturaClaimedIds.includes(r.id)) return;
+  if(c.lecturaClaimedIds.includes(r.id)) return;
   const bonus = readingBonusAmount(c);
   c.xpBank += bonus;
   c.lecturaClaimedIds.push(r.id);
