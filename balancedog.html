@@ -5,31 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BalanceDog — Prototipo funcional</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F5EFE6;
-  --card:#FFFCF6;
-  --accent:#B08968;
-  --accent-dark:#8B6A4F;
-  --accent-light:#EADFC8;
-  --text:#4A3B2E;
-  --text-soft:#93826D;
-  --danger:#C1666B;
-  --success:#7A9E7E;
+  --bg:#EDEAE1;
+  --card:#FFFFFB;
+  --accent:#3C6E55;
+  --accent-dark:#244733;
+  --accent-light:#D8E6DB;
+  --text:#272420;
+  --text-soft:#6D6558;
+  --danger:#C1566B;
+  --success:#3E8E82;
   --warn:#D9A441;
-  --radius:20px;
+  --radius:22px;
+  --font-display:'Baloo 2','Trebuchet MS',sans-serif;
+  --font-body:'Nunito','Trebuchet MS',sans-serif;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
-  font-family:'Quicksand','Trebuchet MS',sans-serif;
-  background:#241f19;
+  font-family:var(--font-body);
+  background:#161C16;
   color:var(--text);
   padding-block:24px;
 }
 button, input, select, textarea{font-family:inherit;}
-h1,h2,h3,h4,p{margin:0;}
+h1,h2,h3,h4{margin:0;font-family:var(--font-display);}
+p{margin:0;}
+.card-title,.greet,.xp-value,.name,.btn,.tab-btn,.nm,#adminApp h1,.stat-box .n,.notif-title,.behavior-item .name{font-family:var(--font-display);}
 .hidden{display:none !important;}
 img{max-width:100%;}
 
@@ -47,7 +52,7 @@ img{max-width:100%;}
   max-width:100%;
   background:var(--bg);
   border-radius:38px;
-  box-shadow:0 0 0 9px #14110d, 0 24px 50px rgba(0,0,0,.5);
+  box-shadow:0 0 0 9px #11160f, 0 24px 50px rgba(0,0,0,.5);
   overflow:hidden;
   position:relative;
 }
@@ -132,7 +137,13 @@ img{max-width:100%;}
   padding:6px 0 10px;position:relative;
 }
 .mascot-stage{position:relative;width:140px;height:100px;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
+.mascot-stage::before{
+  content:'';position:absolute;bottom:4px;left:50%;width:92px;height:28px;transform:translateX(-50%);
+  background:radial-gradient(ellipse at center,rgba(60,110,85,.22),rgba(60,110,85,0) 72%);
+  border-radius:50%;pointer-events:none;
+}
 .mascot-anim{
+  position:relative;z-index:1;
   height:auto;display:block;transform-origin:bottom center;
   animation:squash 1.3s ease-in-out infinite;
   filter:drop-shadow(0 8px 6px rgba(0,0,0,.15));
@@ -149,11 +160,11 @@ img{max-width:100%;}
 /* ---------- cards ---------- */
 .card{
   background:var(--card);border-radius:var(--radius);padding:16px;
-  box-shadow:0 3px 10px rgba(80,60,40,.08);margin-bottom:14px;
+  box-shadow:0 3px 10px rgba(30,45,38,.08);margin-bottom:14px;
 }
 .card-accent{
   background:linear-gradient(135deg,var(--accent-light),var(--card));
-  border:1px solid #e3d3b6;
+  border:1px solid #c5dbc9;
 }
 .card-title{font-weight:800;font-size:15.5px;margin-bottom:4px;}
 .card-sub{font-size:12.5px;color:var(--text-soft);margin-bottom:8px;}
@@ -164,7 +175,7 @@ img{max-width:100%;}
 
 /* ---------- buttons ---------- */
 .btn{
-  display:block;width:100%;border:none;border-radius:14px;padding:12px 14px;
+  display:block;width:100%;border:none;border-radius:16px;padding:12px 14px;
   font-weight:700;font-size:14px;cursor:pointer;text-align:center;text-decoration:none;color:#fff;
   background:var(--accent);
 }
@@ -179,20 +190,27 @@ img{max-width:100%;}
 .row3 .tile{flex:1;}
 .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px;}
 .tile{
-  background:var(--card);border-radius:16px;padding:10px 8px;text-align:center;cursor:pointer;
-  box-shadow:0 3px 8px rgba(80,60,40,.07);border:none;font-family:inherit;
+  background:var(--card);border-radius:18px;padding:10px 8px;text-align:center;cursor:pointer;
+  box-shadow:0 3px 8px rgba(30,45,38,.07);border:none;font-family:inherit;
 }
 .tile:disabled,.tile.locked{opacity:.68;cursor:not-allowed;}
 .tile .ic{font-size:22px;display:block;margin-bottom:4px;}
 .tile .t{font-size:11px;font-weight:700;color:var(--text);}
 .tile .lock{font-size:16px;}
 .course-tile{
-  background:var(--card);border-radius:16px;padding:12px 10px;text-align:left;cursor:pointer;border:none;font-family:inherit;
-  box-shadow:0 3px 8px rgba(80,60,40,.07);
+  background:var(--card);border-radius:18px;padding:12px 10px;text-align:left;cursor:pointer;border:none;font-family:inherit;
+  box-shadow:0 3px 8px rgba(30,45,38,.07);
 }
 .course-tile.locked{opacity:.65;cursor:not-allowed;text-align:center;}
-.course-tile .name{font-weight:800;font-size:12.5px;color:var(--accent-dark);margin-bottom:2px;}
+.course-tile .name{font-weight:800;font-size:12.5px;color:var(--accent-dark);margin-bottom:3px;display:flex;align-items:center;gap:6px;}
+.course-tile.locked .name,.course-tile.completed-state .name{justify-content:center;}
 .course-tile .info{font-size:11px;color:var(--text-soft);line-height:1.3;}
+.course-ic{
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:24px;height:24px;border-radius:50%;background:var(--accent-light);color:var(--accent-dark);
+}
+.course-ic svg{width:14px;height:14px;}
+.course-tile.completed-state .course-ic{background:#bfe0cf;color:#1f5c3f;}
 .course-tile .lock-ic{font-size:20px;display:block;margin-bottom:4px;text-align:center;animation:lockPulse 2.4s ease-in-out infinite;}
 @keyframes lockPulse{0%,100%{opacity:.55;}50%{opacity:1;}}
 .course-tile.completed-state{
@@ -1008,13 +1026,21 @@ function selectDog(id){
   saveState();
   renderHome();
 }
+function courseIconHtml(key){
+  const icons = {
+    basico:'<svg viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="7.3" cy="9.3" rx="1.8" ry="2.3" transform="rotate(-18 7.3 9.3)"/><ellipse cx="12" cy="7.3" rx="1.9" ry="2.4"/><ellipse cx="16.7" cy="9.3" rx="1.8" ry="2.3" transform="rotate(18 16.7 9.3)"/><path d="M12 11.6c-3 0-5.4 2.1-5.4 4.4 0 1.7 1.5 2.7 3.2 2.1.9-.3 1.5-.3 2.2-.3s1.3 0 2.2.3c1.7.6 3.2-.4 3.2-2.1 0-2.3-2.4-4.4-5.4-4.4z"/></g></svg>',
+    avanzado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M5 19v-5"/><path d="M10 19v-8"/><path d="M15 19V7"/><path d="M20 19V4"/></svg>',
+    conducta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>'
+  };
+  return `<span class="course-ic">${icons[key]}</span>`;
+}
 function renderCourseTile(key){
   const c = activeClient();
   const dog = selectedDog(c);
   if(key==='conducta'){
     const unlocked = dog.courses.basico.completed;
     if(!unlocked){
-      return `<div class="course-tile locked"><div class="name" style="opacity:.5;">🧩 Conducta</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
+      return `<div class="course-tile locked"><div class="name" style="opacity:.5;">${courseIconHtml('conducta')}Conducta</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
     }
     const active = dog.behaviorProblems.find(b=>b.id===dog.activeBehaviorId);
     let info, bar='';
@@ -1024,16 +1050,17 @@ function renderCourseTile(key){
       bar = `<div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`;
     } else info = 'Elige un problema de conducta';
     if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
-    return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">🧩 Conducta</div><div class="info">${info}</div>${bar}</button>`;
+    return `<button class="course-tile" onclick="nav('screenConducta')"><div class="name">${courseIconHtml('conducta')}Conducta</div><div class="info">${info}</div>${bar}</button>`;
   }
   const course = dog.courses[key];
   const total = course.totalSessions;
-  const label = key==='basico' ? '🎯 Básico' : '🚀 Avanzado';
+  const label = key==='basico' ? 'Básico' : 'Avanzado';
+  const labelHtml = `${courseIconHtml(key)}${label}`;
   if(key==='avanzado' && !course.unlocked){
-    return `<div class="course-tile locked"><div class="name" style="opacity:.5;">${label}</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
+    return `<div class="course-tile locked"><div class="name" style="opacity:.5;">${labelHtml}</div><span class="lock-ic">🔒</span><div class="info">Se desbloquea al terminar el básico</div></div>`;
   }
   if(course.completed){
-    return `<div class="course-tile completed-state"><div class="name">${label}</div><div class="info">¡Curso completado! 🎓</div></div>`;
+    return `<div class="course-tile completed-state"><div class="name">${labelHtml}</div><div class="info">¡Curso completado! 🎓</div></div>`;
   }
   const sessions = key==='basico' ? BASICO_SESSIONS : AVANZADO_SESSIONS;
   const exName = sessions[course.currentSession-1].name;
@@ -1041,7 +1068,7 @@ function renderCourseTile(key){
   if(usedSessionToday(dog)) info += '<br><b>Disponible mañana</b>';
   else info += '<br>Toca para realizar la siguiente sesión';
   const pct = Math.round(((course.currentSession-1)/total)*100);
-  return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${label}</div><div class="info">${info}</div><div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div></button>`;
+  return `<button class="course-tile" onclick="openCourseSession('${key}')"><div class="name">${labelHtml}</div><div class="info">${info}</div><div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div></button>`;
 }
 
 function openCourseSession(key){
