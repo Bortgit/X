@@ -1038,13 +1038,30 @@ function makeDefaultState(){
 
 let S = null;
 
+function migrateLoadedState(){
+  // Rellena cualquier campo nuevo que no exista todavía en un estado guardado por una
+  // versión anterior de la app (ej. bookingsGuarderia), sin tocar los datos ya presentes.
+  if(!S.extraContent) S.extraContent = [];
+  if(!S.admin) S.admin = {};
+  if(S.admin.residenceCapacity==null) S.admin.residenceCapacity = 3;
+  if(!S.admin.calendarClosures) S.admin.calendarClosures = {};
+  if(!S.admin.calendarClosures.training) S.admin.calendarClosures.training = {};
+  if(!S.admin.calendarClosures.residencia) S.admin.calendarClosures.residencia = {};
+  const clientDefaults = makeClient({});
+  const dogDefaults = makeDog({});
+  (S.clients||[]).forEach(c=>{
+    Object.keys(clientDefaults).forEach(k=>{ if(c[k]===undefined) c[k] = clientDefaults[k]; });
+    (c.dogs||[]).forEach(dog=>{
+      Object.keys(dogDefaults).forEach(k=>{ if(dog[k]===undefined) dog[k] = dogDefaults[k]; });
+    });
+  });
+}
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       S = JSON.parse(raw);
-      if(!S.extraContent) S.extraContent = []; // compatibilidad con estado guardado antes de esta función
-      S.clients.forEach(c=>{ if(!c.bookingsGuarderia) c.bookingsGuarderia = []; }); // compatibilidad con estado guardado antes de la guardería de mañana
+      migrateLoadedState();
       return;
     }
   }catch(e){ console.warn('Estado corrupto, reiniciando', e); }
@@ -1096,7 +1113,14 @@ function nav(id, ctx){
   document.getElementById(id).classList.add('active');
   document.getElementById('phoneScreen').scrollTop = 0;
   const renderer = RENDERERS[id];
-  if(renderer) renderer();
+  if(renderer){
+    try{
+      renderer();
+    }catch(e){
+      console.error('Error al abrir la pantalla', id, e);
+      showToast('Ha ocurrido un error al abrir esta pantalla. Prueba a pulsar "Reiniciar datos" en la barra de depuración.', {type:'warn'});
+    }
+  }
 }
 function goHome(){
   const c = activeClient();
