@@ -297,6 +297,18 @@ img{max-width:100%;}
 .daycell.selected .dow{color:#fce;}
 .daycell.has-booking::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent-dark);}
 .daycell.selected.has-booking::after{background:#fff;}
+.week-card{
+  background:var(--card);border:2px solid var(--accent-light);border-radius:16px;padding:12px 14px;
+  margin-bottom:10px;cursor:pointer;box-shadow:0 3px 8px rgba(30,45,38,.07);
+}
+.week-card.selected{border-color:var(--accent);background:linear-gradient(135deg,var(--accent-light),var(--card));}
+.week-card.disabled{opacity:.5;cursor:not-allowed;}
+.week-card-label{font-weight:800;font-size:13px;margin-bottom:8px;color:var(--accent-dark);}
+.week-card-days{display:flex;gap:6px;justify-content:space-between;}
+.week-card-days .wd{flex:1;text-align:center;background:var(--accent-light);border-radius:8px;padding:5px 2px;font-size:10.5px;font-weight:700;color:var(--text);}
+.week-card-days .wd small{display:block;font-size:8.5px;font-weight:600;color:var(--text-soft);}
+.week-card-days .wd.past{opacity:.4;background:#eee;color:#998;text-decoration:line-through;}
+.week-card.selected .week-card-days .wd{background:#fff;}
 .hour-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
 .hour-chip{
   padding:7px 10px;border-radius:20px;border:1.5px solid var(--accent-light);background:#fff;
@@ -344,6 +356,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 .admin-daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto;}
 .admin-daycell{position:relative;background:#fff;border:1.5px solid var(--accent-light);border-radius:8px;padding:5px 2px;text-align:center;font-size:10px;font-weight:700;}
 .admin-daycell.closed{background:#f1e3e3;color:#a95;}
+.admin-daycell.past{opacity:.4;}
+.admin-daycell.past .ad-daytoggle{cursor:not-allowed;}
 .admin-daycell small{display:block;font-size:8px;font-weight:600;color:var(--text-soft);}
 .admin-daycell.has-booking{border-color:var(--accent);}
 .admin-daycell.selected{background:var(--accent);color:#fff;}
@@ -548,7 +562,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="note-box">Compromiso: al menos 3 horas de juego acompañado al día, en patio bien delimitado.</div>
           <div id="guarderiaDogChoice"></div>
           <p class="card-sub">Elige una semana (lunes a viernes). Si la semana ya ha empezado, los días pasados se dan por perdidos.</p>
-          <div class="daygrid" id="guarderiaDayGrid"></div>
+          <div id="guarderiaDayGrid"></div>
           <div id="guarderiaResult" style="margin-top:12px;"></div>
         </div>
       </div>
@@ -1400,13 +1414,16 @@ function pickTrainingDog(id){
 }
 function renderTrainingDayGrid(){
   const grid = document.getElementById('trainingDayGrid');
+  const start = mondayOfWeek(S.meta.simDate);
+  const pad = daysBetween(start, S.meta.simDate);
   let html='';
-  for(let i=0;i<21;i++){
-    const d = addDays(S.meta.simDate, i);
+  for(let i=0;i<21+pad;i++){
+    const d = addDays(start, i);
+    const isPast = d < S.meta.simDate;
     const closed = S.admin.calendarClosures.training[d]==='full' || isTrainingWeekend(d);
     const hasSlot = trainingSel.slots.some(s=>s.date===d);
     const isPending = trainingSel.pendingDate===d;
-    html += `<div class="daycell ${closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
+    html += `<div class="daycell ${isPast?'past':closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${(isPast||closed)?'':`pickTrainingDay('${d}')`}">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
   }
   grid.innerHTML = html;
 }
@@ -1716,23 +1733,31 @@ function pickGuarderiaDog(sel){
   document.querySelectorAll('#guarderiaDogChoice .hour-chip').forEach(el=>el.classList.toggle('selected', el.dataset.sel===sel));
   renderGuarderiaResult();
 }
+function guarderiaWeekOptions(){
+  const monday0 = mondayOfWeek(S.meta.simDate);
+  const weeks = [];
+  for(let i=0;i<4;i++) weeks.push(addDays(monday0, i*7));
+  return weeks;
+}
 function renderGuarderiaDayGrid(){
-  const grid = document.getElementById('guarderiaDayGrid');
-  const today = S.meta.simDate;
-  const cutoff = addMonths(today,1);
-  let html='';
-  let d = today;
-  while(d<=cutoff){
-    const dow = parseDate(d).getUTCDay();
-    const isWeekend = dow===0 || dow===6;
-    const monday = mondayOfWeek(d);
-    const weekDisabled = !isWeekend && guarderiaUsableDaysForWeek(monday).length===0;
-    const closed = isWeekend || weekDisabled;
-    const selected = !closed && guarderiaSelectedMonday===monday;
-    html += `<div class="daycell ${closed?'closed':''} ${selected?'selected':''}" data-date="${d}" onclick="${closed?'':`pickGuarderiaWeek('${d}')`}">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
-    d = addDays(d,1);
-  }
-  grid.innerHTML = html;
+  const list = document.getElementById('guarderiaDayGrid');
+  const weeks = guarderiaWeekOptions();
+  list.innerHTML = weeks.map(monday=>{
+    const friday = addDays(monday,4);
+    const usable = guarderiaUsableDaysForWeek(monday);
+    const lost = guarderiaLostDaysForWeek(monday);
+    const disabled = usable.length===0;
+    const selected = !disabled && guarderiaSelectedMonday===monday;
+    const dayBadges = [0,1,2,3,4].map(i=>{
+      const d = addDays(monday,i);
+      const isPast = lost.includes(d);
+      return `<span class="wd ${isPast?'past':''}">${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small></span>`;
+    }).join('');
+    return `<div class="week-card ${selected?'selected':''} ${disabled?'disabled':''}" onclick="${disabled?'':`pickGuarderiaWeek('${monday}')`}">
+      <div class="week-card-label">Semana del ${humanDate(monday)} al ${humanDate(friday)}</div>
+      <div class="week-card-days">${dayBadges}</div>
+    </div>`;
+  }).join('');
 }
 function pickGuarderiaWeek(d){
   guarderiaSelectedMonday = mondayOfWeek(d);
@@ -1834,9 +1859,11 @@ let agendaSelectedDate = null;
 function renderAgenda(){
   const c = activeClient();
   const grid = document.getElementById('agendaDayGrid');
+  const start = mondayOfWeek(S.meta.simDate);
+  const pad = daysBetween(start, S.meta.simDate);
   let html='';
-  for(let i=0;i<30;i++){
-    const d = addDays(S.meta.simDate, i);
+  for(let i=0;i<30+pad;i++){
+    const d = addDays(start, i);
     const has = clientBookingsOnDate(c,d).length>0;
     html += `<div class="daycell ${has?'has-booking':''}" data-date="${d}" onclick="pickAgendaDay('${d}')">${parseDate(d).getUTCDate()}<span class="dow">${dowLabel(d)}</span></div>`;
   }
@@ -1861,9 +1888,11 @@ function pickAgendaDay(d){
 let adminAgendaSelectedDate = null;
 function renderAdminAgenda(){
   const grid = document.getElementById('adminAgendaGrid');
+  const start = mondayOfWeek(S.meta.simDate);
+  const pad = daysBetween(start, S.meta.simDate);
   let html='';
-  for(let i=0;i<28;i++){
-    const d = addDays(S.meta.simDate, i);
+  for(let i=0;i<28+pad;i++){
+    const d = addDays(start, i);
     const items = allBookingsOnDate(d);
     html += `<div class="admin-daycell ${items.length?'has-booking':''}" data-date="${d}" onclick="pickAdminAgendaDay('${d}')">
       ${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small>${items.length?`<span class="badge-count">${items.length}</span>`:''}
@@ -2181,21 +2210,24 @@ function renderAdminCalendar(){
   const tab = S.meta.calTab || 'training';
   document.getElementById('capacityField').classList.toggle('hidden', tab!=='residencia');
   const grid = document.getElementById('adminCalGrid');
+  const start = mondayOfWeek(S.meta.simDate);
+  const pad = daysBetween(start, S.meta.simDate);
   let html='';
-  for(let i=0;i<28;i++){
-    const d = addDays(S.meta.simDate, i);
+  for(let i=0;i<28+pad;i++){
+    const d = addDays(start, i);
+    const isPast = d < S.meta.simDate;
     const weekendTraining = tab==='training' && isTrainingWeekend(d);
     const closed = S.admin.calendarClosures[tab][d]==='full' || weekendTraining;
     let hoursHtml='';
-    if(tab==='training' && !weekendTraining){
+    if(tab==='training' && !weekendTraining && !isPast){
       const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
       hoursHtml = `<div class="admin-hours">${trainingHoursForDate(d).map(h=>{
         const hc = closedHours.includes(h);
         return `<span class="admin-hour ${hc?'closed':''}" onclick="event.stopPropagation();adminToggleHour('${d}','${h}')">${h}</span>`;
       }).join('')}</div>`;
     }
-    html += `<div class="admin-daycell ${closed?'closed':''}">
-      <div class="ad-daytoggle" onclick="${weekendTraining?'':`adminToggleDay('${tab}','${d}')`}">${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small></div>
+    html += `<div class="admin-daycell ${isPast?'past':closed?'closed':''}">
+      <div class="ad-daytoggle" onclick="${(isPast||weekendTraining)?'':`adminToggleDay('${tab}','${d}')`}">${parseDate(d).getUTCDate()}<small>${dowLabel(d)}</small></div>
       ${hoursHtml}
     </div>`;
   }
