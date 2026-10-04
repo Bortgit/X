@@ -694,7 +694,17 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 
 const STORAGE_KEY = 'balancedog_state_v2';
 const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
-const FIXED_HOURS = ['09:00','11:00','13:00','17:00','19:00'];
+// Horario fijo de adiestramiento: lun/jue mañana 10:00 + tarde 17:30; mar/mié/vie solo mañanas 10:00-11:00-12:00; sáb/dom cerrado.
+function isTrainingWeekend(d){
+  const dow = parseDate(d).getDay(); // 0=domingo ... 6=sábado
+  return dow===0 || dow===6;
+}
+function trainingHoursForDate(d){
+  const dow = parseDate(d).getDay(); // 1=lunes, 4=jueves
+  if(dow===1 || dow===4) return ['10:00','17:30'];
+  if(dow===2 || dow===3 || dow===5) return ['10:00','11:00','12:00'];
+  return [];
+}
 const DIY_GROUPS = [ {id:'A', label:'18:00–19:00'}, {id:'B', label:'19:00–20:00'} ]; // DIY grupal: lunes y jueves
 const DIY_GROUP_CAPACITY = 4; // perros por grupo
 const TRAINER_WHATSAPP_NUMBER = '34621361191'; // número real del adiestrador/negocio, NUNCA el del cliente
@@ -1239,7 +1249,7 @@ function renderTrainingDayGrid(){
   let html='';
   for(let i=0;i<21;i++){
     const d = addDays(S.meta.simDate, i);
-    const closed = S.admin.calendarClosures.training[d]==='full';
+    const closed = S.admin.calendarClosures.training[d]==='full' || isTrainingWeekend(d);
     const hasSlot = trainingSel.slots.some(s=>s.date===d);
     const isPending = trainingSel.pendingDate===d;
     html += `<div class="daycell ${closed?'closed':''} ${hasSlot?'has-booking':''} ${isPending?'selected':''}" data-date="${d}" onclick="${closed?'':`pickTrainingDay('${d}')`}">${parseDate(d).getDate()}<span class="dow">${dowLabel(d)}</span></div>`;
@@ -1251,7 +1261,7 @@ function pickTrainingDay(d){
   renderTrainingDayGrid();
   const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
   const takenHours = trainingSel.slots.filter(s=>s.date===d).map(s=>s.hour);
-  document.getElementById('trainingHourRow').innerHTML = FIXED_HOURS.map(h=>{
+  document.getElementById('trainingHourRow').innerHTML = trainingHoursForDate(d).map(h=>{
     const closed = closedHours.includes(h) || takenHours.includes(h);
     return `<div class="hour-chip ${closed?'closed':''}" onclick="${closed?'':`pickTrainingHour('${h}')`}">${h}</div>`;
   }).join('');
@@ -1892,17 +1902,18 @@ function renderAdminCalendar(){
   let html='';
   for(let i=0;i<28;i++){
     const d = addDays(S.meta.simDate, i);
-    const closed = S.admin.calendarClosures[tab][d]==='full';
+    const weekendTraining = tab==='training' && isTrainingWeekend(d);
+    const closed = S.admin.calendarClosures[tab][d]==='full' || weekendTraining;
     let hoursHtml='';
-    if(tab==='training'){
+    if(tab==='training' && !weekendTraining){
       const closedHours = S.admin.calendarClosures.training[d+'_hours'] || [];
-      hoursHtml = `<div class="admin-hours">${FIXED_HOURS.map(h=>{
+      hoursHtml = `<div class="admin-hours">${trainingHoursForDate(d).map(h=>{
         const hc = closedHours.includes(h);
         return `<span class="admin-hour ${hc?'closed':''}" onclick="event.stopPropagation();adminToggleHour('${d}','${h}')">${h}</span>`;
       }).join('')}</div>`;
     }
     html += `<div class="admin-daycell ${closed?'closed':''}">
-      <div class="ad-daytoggle" onclick="adminToggleDay('${tab}','${d}')">${parseDate(d).getDate()}<small>${dowLabel(d)}</small></div>
+      <div class="ad-daytoggle" onclick="${weekendTraining?'':`adminToggleDay('${tab}','${d}')`}">${parseDate(d).getDate()}<small>${dowLabel(d)}</small></div>
       ${hoursHtml}
     </div>`;
   }
