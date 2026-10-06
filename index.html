@@ -552,7 +552,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="hour-row" id="trainingHourRow"></div>
           <div id="trainingSlotsSummary"></div>
           <div class="pricebox" id="trainingPricebox"></div>
-          <button class="btn" id="trainingPayBtn" onclick="payTrainingBooking()" disabled>Reservar y pagar (simulado)</button>
+          <button class="btn" id="trainingPayBtn" onclick="payTrainingBooking()" disabled>Reservar y pagar</button>
         </div>
       </div>
 
@@ -564,7 +564,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div id="diyGroupChoice"></div>
           <div class="note-box" id="diyScheduleNote"></div>
           <div class="pricebox" id="diyPricebox"></div>
-          <button class="btn" id="diyPayBtn" onclick="payDiyBooking()" disabled>Reservar y pagar (simulado)</button>
+          <button class="btn" id="diyPayBtn" onclick="payDiyBooking()" disabled>Reservar y pagar</button>
         </div>
       </div>
 
@@ -588,7 +588,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenResidence">
         <div class="header-row"><button class="back-btn" onclick="nav('screenHuchaServices')">← Volver</button><h2>Reservar residencia</h2></div>
         <div class="screen-pad">
-          <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche el primer perro, 10€/noche el segundo si van juntos · aforo simulado por el admin.</div>
+          <div class="pricebox">Tu hucha: <b id="residBankVal">0 XP</b> (equivalen a <b id="residBankEur">0€</b> de descuento) · 20€/noche el primer perro, 10€/noche el segundo si van juntos · según disponibilidad.</div>
           <div id="residDogChoice"></div>
           <div class="field"><label>Entrada</label><input type="date" id="residCheckin"></div>
           <div class="field"><label>Salida</label><input type="date" id="residCheckout"></div>
@@ -750,7 +750,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
     <div class="admin-section">
       <h3>📊 Estadísticas</h3>
       <div class="stat-row">
-        <div class="stat-box"><div class="n" id="statRevenue">0€</div><div class="l">Ingresos del mes (simulado)</div></div>
+        <div class="stat-box"><div class="n" id="statRevenue">0€</div><div class="l">Ingresos del mes</div></div>
         <div class="stat-box"><div class="n" id="statActive">0</div><div class="l">Clientes activos</div></div>
         <div class="stat-box"><div class="n" id="statCancelled">0</div><div class="l">Clientes de baja</div></div>
       </div>
@@ -1730,7 +1730,7 @@ function checkResidenceAvailability(){
       <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
       <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
     </div>
-    <button class="btn" onclick="payResidenceBooking()">Reservar y pagar (simulado)</button>`;
+    <button class="btn" onclick="payResidenceBooking()">Reservar y pagar</button>`;
 }
 function payResidenceBooking(){
   const b = pendingResidBooking;
@@ -1867,7 +1867,7 @@ function renderGuarderiaResult(){
       <div class="line"><span>Descuento hucha de XP</span><span>-${discount.toFixed(2)}€</span></div>
       <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>
     </div>
-    <button class="btn" onclick="payGuarderiaBooking()">Contratar y pagar (simulado)</button>`;
+    <button class="btn" onclick="payGuarderiaBooking()">Contratar y pagar</button>`;
 }
 function payGuarderiaBooking(){
   const b = pendingGuarderiaBooking;
