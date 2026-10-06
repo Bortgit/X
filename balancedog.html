@@ -67,38 +67,6 @@ img{max-width:100%;}
 .screen.active{display:block;}
 .screen-pad{padding:18px 18px 90px;}
 
-/* ---------- debug bar ---------- */
-#debugBar{
-  width:390px;
-  max-width:100%;
-  margin:0 auto 14px;
-  background:#171310;
-  color:#f1e6d6;
-  border-radius:16px;
-  padding:10px 14px;
-  font-size:12.5px;
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-}
-#debugBar b{color:var(--warn);}
-#debugBar button{
-  background:#3a3128;
-  color:#f1e6d6;
-  border:1px solid #55483a;
-  border-radius:10px;
-  padding:5px 9px;
-  cursor:pointer;
-  font-size:12px;
-}
-#debugBar button:hover{background:#4a3f33;}
-#debugBar input[type=date]{
-  background:#3a3128;color:#f1e6d6;border:1px solid #55483a;border-radius:8px;padding:4px 6px;font-size:12px;
-}
-#debugBar .spacer{flex:1 1 auto;}
-#debugBar .grp{display:flex;gap:4px;align-items:center;}
-
 /* ---------- topbar / header ---------- */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
@@ -379,47 +347,103 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 .tabs{display:flex;gap:8px;margin-bottom:12px;}
 .tab-btn{background:var(--accent-light);border:none;border-radius:10px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--accent-dark);}
 .tab-btn.active{background:var(--accent);color:#fff;}
+.form-error{color:var(--danger);font-size:12.5px;font-weight:700;margin-bottom:8px;min-height:1px;}
+.auth-eyebrow{text-align:center;margin-bottom:24px;}
+.auth-eyebrow .em{font-size:44px;}
+.auth-eyebrow h1{font-size:22px;margin-top:6px;}
+.admin-login-link{display:block;text-align:center;margin-top:28px;font-size:12px;color:var(--text-soft);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:inherit;}
 </style>
 </head>
 <body>
 
-<div id="debugBar">
-  <div class="grp"><b>MODO DEBUG</b></div>
-  <div class="grp">Fecha simulada: <b id="dbgDateLabel">—</b></div>
-  <div class="grp">
-    <button onclick="debugShiftDay(-1)">-1 día</button>
-    <button onclick="debugShiftDay(1)">+1 día</button>
-    <button onclick="debugShiftDay(7)">+7 días</button>
-    <button onclick="debugGotoNextMonth()">Día 1 mes siguiente</button>
-    <input type="date" id="dbgDateInput" onchange="debugSetDate(this.value)">
-  </div>
-  <div class="spacer"></div>
-  <div class="grp">
-    <button onclick="toggleView()">Cambiar vista cliente/admin</button>
-    <button onclick="debugShowOnboarding()">Ver onboarding</button>
-    <button onclick="debugResetState()">Reiniciar datos</button>
-  </div>
-</div>
-
 <div class="app-wrap">
-  <div class="phone" id="clientAppWrap">
-    <div class="phone-screen" id="phoneScreen">
+  <div class="phone" id="authAppWrap">
+    <div class="phone-screen" id="authPhoneScreen">
 
-      <!-- ============ ONBOARDING ============ -->
-      <div class="screen" id="screenOnboarding">
+      <!-- ============ LANDING ============ -->
+      <div class="screen active" id="screenLanding">
+        <div class="screen-pad" style="padding-top:54px;">
+          <div class="auth-eyebrow"><div class="em">🐾</div><h1>BalanceDog Club</h1></div>
+          <div class="card card-accent">
+            <p class="card-sub" style="font-size:14px;line-height:1.6;color:var(--text);">En BalanceDog Club encontrarás sesiones de adiestramiento, información y trucos para cambiar conductas, artículos científicos, y además la posibilidad de adelantarte a cualquiera para reservar tanto sesiones de adiestramiento como residencia y guardería.</p>
+          </div>
+          <button class="btn" style="margin-top:18px;" onclick="nav('screenOnboarding')">Crear cuenta</button>
+          <button class="btn btn-outline" style="margin-top:10px;" onclick="nav('screenClientLogin')">Ya tengo cuenta</button>
+          <button class="admin-login-link" onclick="nav('screenAdminLogin')">Acceso administrador</button>
+        </div>
+      </div>
+
+      <!-- ============ CLIENT LOGIN ============ -->
+      <div class="screen" id="screenClientLogin">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenLanding')">← Volver</button><h2>Iniciar sesión</h2></div>
         <div class="screen-pad">
-          <div class="header-row"><h2>🐾 Bienvenido a BalanceDog</h2></div>
           <div class="card">
-            <p class="card-sub">Antes de empezar, cuéntanos un poco sobre ti y tu perro. (Podrás añadir un segundo perro más adelante desde tu perfil, hasta el límite de tu suscripción).</p>
+            <div class="field"><label>Teléfono</label><input id="loginPhone" placeholder="Ej. 600 111 222"></div>
+            <div class="field"><label>Contraseña</label><input type="password" id="loginPassword"></div>
+            <p class="form-error" id="loginError"></p>
+            <button class="btn" onclick="submitClientLogin()">Entrar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ADMIN LOGIN ============ -->
+      <div class="screen" id="screenAdminLogin">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenLanding')">← Volver</button><h2>Acceso administrador</h2></div>
+        <div class="screen-pad">
+          <div class="card">
+            <div class="field"><label>Contraseña de administrador</label><input type="password" id="adminLoginPassword"></div>
+            <p class="form-error" id="adminLoginError"></p>
+            <button class="btn" onclick="submitAdminLogin()">Entrar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CREAR CUENTA (datos) ============ -->
+      <div class="screen" id="screenOnboarding">
+        <div class="header-row"><button class="back-btn" onclick="nav('screenLanding')">← Volver</button><h2>Crear cuenta</h2></div>
+        <div class="screen-pad">
+          <div class="card">
+            <p class="card-sub">Cuéntanos un poco sobre ti y tu perro. (Podrás añadir un segundo perro más adelante desde tu perfil, hasta el límite de tu suscripción).</p>
             <div class="field"><label>Nombre y apellidos</label><input id="obName" placeholder="Ej. Laura Gómez"></div>
-            <div class="field"><label>Teléfono</label><input id="obPhone" placeholder="Ej. 600 111 222"></div>
+            <div class="field"><label>Teléfono (será tu usuario para entrar)</label><input id="obPhone" placeholder="Ej. 600 111 222"></div>
             <div class="field"><label>Dirección</label><input id="obAddress" placeholder="Calle, número, ciudad"></div>
+            <div class="field"><label>Contraseña</label><input type="password" id="obPassword" placeholder="Mínimo 6 caracteres"></div>
+            <div class="field"><label>Repite la contraseña</label><input type="password" id="obPassword2"></div>
+            <hr class="sep">
             <div class="field"><label>Nombre del perro</label><input id="obDogName" placeholder="Ej. Toby"></div>
             <div class="field"><label>Raza</label><input id="obDogBreed" placeholder="Ej. Border Collie"></div>
             <div class="field"><label>Edad del perro</label><input id="obDogAge" placeholder="Ej. 3 años"></div>
             <div class="note-box">📋 Te recomendamos completar la <b>evaluación inicial</b> (48 preguntas) desde tu perfil en cuanto termines el registro, para que podamos personalizar tu plan.</div>
-            <button class="btn" onclick="submitOnboarding()">Comenzar</button>
+            <p class="form-error" id="signupError"></p>
+            <button class="btn" onclick="submitSignupData()">Continuar al pago</button>
           </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="phone hidden" id="clientAppWrap">
+    <div class="phone-screen" id="phoneScreen">
+
+      <!-- ============ PASARELA DE PAGO ============ -->
+      <div class="screen" id="screenPaymentRequired">
+        <div class="screen-pad" style="padding-top:40px;">
+          <div class="card card-accent">
+            <div class="card-title">🔒 Activa tu suscripción</div>
+            <p class="card-sub" id="paymentGateReason" style="margin-top:6px;">—</p>
+          </div>
+          <div class="pricebox"><div class="line tot"><span>BalanceDog Club</span><span>8,00€ / mes</span></div></div>
+          <div class="card">
+            <div class="field"><label>Número de tarjeta</label><input inputmode="numeric" placeholder="1234 5678 9012 3456"></div>
+            <div style="display:flex;gap:10px;">
+              <div class="field" style="flex:1;"><label>Caducidad</label><input placeholder="MM/AA"></div>
+              <div class="field" style="flex:1;"><label>CVC</label><input inputmode="numeric" placeholder="123"></div>
+            </div>
+            <p class="extra-note" style="margin-bottom:10px;">Cobro de prueba del prototipo — no se realiza ningún cargo real todavía.</p>
+            <button class="btn" onclick="payActivateSubscription()">Pagar 8€ y activar mi cuenta</button>
+          </div>
+          <button class="btn btn-outline" style="margin-top:10px;" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
 
@@ -627,6 +651,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div id="dogsSection"></div>
           <button class="btn" onclick="saveProfile()">Guardar cambios</button>
           <button class="btn btn-outline" id="addDogBtn" style="margin-top:10px;" onclick="nav('screenAddDog')">+ Añadir otro perro</button>
+          <button class="btn btn-outline" style="margin-top:10px;" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
 
@@ -660,7 +685,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
   <!-- ============ ADMIN ============ -->
   <div id="adminApp" class="hidden">
     <h1>🐾 BalanceDog — Panel de administrador</h1>
-    <div class="sub">Fecha simulada actual: <b id="adminDateLabel">—</b> · <button class="tab-btn" onclick="toggleView()">Volver a vista cliente</button></div>
+    <div class="sub">Fecha actual: <b id="adminDateLabel">—</b> · <button class="tab-btn" onclick="logout()">Cerrar sesión</button></div>
 
     <div class="admin-section">
       <h3>📖 Lectura mensual</h3>
@@ -733,8 +758,14 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
    curso/progreso; el XP (mensual y hucha) es único y compartido por cuenta.
    ========================================================================= */
 
-const STORAGE_KEY = 'balancedog_state_v2';
+const STORAGE_KEY = 'balancedog_state_v3';
 const XP_TO_EUR = 0.01; // 1 XP = 1 céntimo, tasa usada tanto para XP mensual como para la hucha (no es dinero reclamable, solo descuento)
+const MEMBERSHIP_PRICE_EUR = 8;
+// Hash SHA-256 de la contraseña de administrador: nunca se guarda en texto plano, pero al ser
+// un prototipo sin servidor propio, cualquiera que mire el código fuente podría intentar
+// forzarla por fuerza bruta (probar contraseñas y comparar el hash). Para un acceso de admin
+// realmente seguro hace falta backend propio que verifique la contraseña del lado del servidor.
+const ADMIN_PASSWORD_HASH = 'b7813fab7536afc71b115a930379bf96b03ccea0193366c231b5635ca2a5480d';
 // Horario fijo de adiestramiento: lun/jue mañana 10:00 + tarde 17:30; mar/mié/vie solo mañanas 10:00-11:00-12:00; sáb/dom cerrado.
 function isTrainingWeekend(d){
   const dow = parseDate(d).getUTCDay(); // 0=domingo ... 6=sábado
@@ -928,12 +959,32 @@ function humanDate(s){
   const d=parseDate(s);
   return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric', timeZone:'UTC'});
 }
+function todayStr(){
+  // Fecha real de hoy, en el calendario LOCAL del dispositivo (no UTC): así cada
+  // usuario ve su propio día real. A partir de aquí se trata como ancla UTC (parseDate),
+  // igual que cualquier otra fecha de la app, sin volver a mezclar local/UTC.
+  const d = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function joinNames(arr){
   if(arr.length<=1) return arr[0]||'';
   return arr.slice(0,-1).join(', ') + ' y ' + arr[arr.length-1];
 }
 function uid(prefix){ return prefix + Math.random().toString(36).slice(2,9); }
+
+/* ---------------- auth: hashing de contraseñas (SHA-256 vía Web Crypto) ---------------- */
+function randomSalt(){
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return [...arr].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function hashPassword(password, salt){ return sha256Hex(salt+':'+password); }
 
 /* ---------------- feedback: toasts + xp reward ---------------- */
 function showToast(message, opts){
@@ -989,75 +1040,36 @@ function makeDog(over){
 }
 
 function makeClient(over){
+  const today = todayStr();
   const base = {
-    id:'c1', name:'Laura Gómez', phone:'600 111 222', address:'Calle Mayor 12, Madrid',
-    onboarded:true,
-    subscriptionStatus:'active',
-    lastEntryDate:'2026-09-15',
+    id:'c1', name:'', phone:'', address:'',
+    subscriptionStatus:'pending',
+    lastEntryDate: today,
     lastXpGrantedDate:'',
-    streak:1,
-    xpMonthly:150, xpMonthlyMonth:'2026-09',
-    xpBank:320,
+    streak:0,
+    xpMonthly:0, xpMonthlyMonth: monthKey(today),
+    xpBank:0,
     lecturaClaimedIds:[],
-    notifications:[
-      {id:'n1', date:'2026-09-15', title:'¡Nueva sesión disponible!', body:'Ya puedes completar la próxima sesión de adiestramiento de tus perros.', read:false},
-      {id:'n2', date:'2026-09-12', title:'Nueva sesión de conducta disponible', body:'Cuando un perro termine el básico se desbloqueará su sección de conducta.', read:false},
-      {id:'n3', date:'2026-09-08', title:'¡Has ganado 25 XP!', body:'Completaste una sesión de adiestramiento. Sigue así.', read:true},
-      {id:'n4', date:'2026-08-30', title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. ¡Empecemos a entrenar!', read:true},
-    ],
+    notifications:[],
     bookingsTraining:[],
     bookingsResidencia:[],
     bookingsGuarderia:[],
-    dogs:[ makeDog({}) ],
+    passwordSalt:'', passwordHash:'',
+    dogs:[],
   };
   const merged = Object.assign(base, over||{});
-  if(!merged.selectedDogId) merged.selectedDogId = merged.dogs[0].id;
+  if(!merged.selectedDogId && merged.dogs.length) merged.selectedDogId = merged.dogs[0].id;
   return merged;
 }
 
 function makeDefaultState(){
-  const simDate = '2026-09-15';
-  const dogToby = makeDog({name:'Toby', breed:'Border Collie', age:'3 años'});
-  const dogNala = makeDog({
-    name:'Nala', breed:'Cocker Spaniel', age:'2 años',
-    courses:{
-      basico:{unlocked:true, completed:true, currentSession:11, totalSessions:BASICO_SESSIONS.length},
-      avanzado:{unlocked:true, completed:false, currentSession:2, totalSessions:AVANZADO_SESSIONS.length},
-      conducta:{unlocked:true},
-    },
-  });
-  const clientA = makeClient({ dogs:[dogToby, dogNala], selectedDogId: dogToby.id });
-
-  const dogLuna1 = makeDog({name:'Luna', breed:'Labrador', age:'2 años',
-    courses:{basico:{unlocked:true,completed:true,currentSession:11,totalSessions:BASICO_SESSIONS.length},
-             avanzado:{unlocked:true,completed:false,currentSession:3,totalSessions:AVANZADO_SESSIONS.length},
-             conducta:{unlocked:true}}});
-  const dogLuna2 = makeDog({name:'Kira', breed:'Beagle', age:'1 año'});
-  const clientB = makeClient({
-    id:'c2', name:'Marcos Ruiz', dogs:[dogLuna1, dogLuna2], selectedDogId:dogLuna1.id,
-    subscriptionStatus:'grace', xpMonthly:60, xpBank:0,
-    notifications:[],
-    bookingsResidencia:[
-      {checkin:addDays(simDate,3), checkout:addDays(simDate,6), nights:3, dogIds:[dogLuna1.id], total:60, discount:0, paidAmount:60, paid:true, createdSimDate:simDate}
-    ],
-  });
-
-  const dogRocky = makeDog({name:'Rocky', breed:'Mestizo', age:'5 años',
-    courses:{basico:{unlocked:true,completed:false,currentSession:2,totalSessions:BASICO_SESSIONS.length},
-             avanzado:{unlocked:false,completed:false,currentSession:1,totalSessions:AVANZADO_SESSIONS.length},
-             conducta:{unlocked:false}}});
-  const clientC = makeClient({
-    id:'c3', name:'Elena Ferrer', dogs:[dogRocky], selectedDogId:dogRocky.id,
-    subscriptionStatus:'cancelled', xpMonthly:0, xpBank:0,
-    notifications:[],
-  });
-
   return {
-    meta:{ simDate, view:'client', calTab:'training' },
-    monthlyReading:{ id:'r1', title:'Lectura de septiembre — Hábitos de refuerzo positivo', uploadedDate:addDays(simDate,-5), dataUrl:'', mime:'' },
+    meta:{ simDate: todayStr(), calTab:'training' },
+    monthlyReading:{ id:null, title:'', uploadedDate:'', dataUrl:'', mime:'' },
     admin:{ residenceCapacity:3, calendarClosures:{ training:{}, residencia:{} } },
-    clients:[ clientA, clientB, clientC ],
+    clients:[],
     extraContent:[], // lo rellena el admin; vacío por defecto, nunca contenido de ejemplo
+    session:null, // null | {role:'admin'} | {role:'client', clientId}
   };
 }
 
@@ -1072,6 +1084,8 @@ function migrateLoadedState(){
   if(!S.admin.calendarClosures) S.admin.calendarClosures = {};
   if(!S.admin.calendarClosures.training) S.admin.calendarClosures.training = {};
   if(!S.admin.calendarClosures.residencia) S.admin.calendarClosures.residencia = {};
+  if(S.session===undefined) S.session = null;
+  if(!S.monthlyReading) S.monthlyReading = { id:null, title:'', uploadedDate:'', dataUrl:'', mime:'' };
   const clientDefaults = makeClient({});
   const dogDefaults = makeDog({});
   (S.clients||[]).forEach(c=>{
@@ -1094,7 +1108,11 @@ function loadState(){
   saveState();
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }
-function activeClient(){ return S.clients[0]; }
+function activeClient(){
+  if(!S.session || S.session.role!=='client') return null;
+  return S.clients.find(c=>c.id===S.session.clientId) || null;
+}
+function canAccessApp(c){ return c.subscriptionStatus==='active' || c.subscriptionStatus==='grace'; }
 function selectedDog(c){ return c.dogs.find(d=>d.id===c.selectedDogId) || c.dogs[0]; }
 
 /* ---------------- normalization (xp monthly expiry) ---------------- */
@@ -1134,12 +1152,13 @@ function computePetStateDisplay(c, dog){
 let navCtx = {};
 function nav(id, ctx){
   try{
+    refreshToday();
     navCtx = ctx || {};
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     const screenEl = document.getElementById(id);
     if(!screenEl) throw new Error('No existe la pantalla "'+id+'"');
     screenEl.classList.add('active');
-    const scroller = document.getElementById('phoneScreen');
+    const scroller = screenEl.closest('.phone-screen');
     if(scroller) scroller.scrollTop = 0;
     const renderer = RENDERERS[id];
     if(renderer) renderer();
@@ -1147,6 +1166,10 @@ function nav(id, ctx){
     console.error('Error al abrir la pantalla', id, e);
     reportAppError(e, 'al abrir la pantalla "'+id+'"');
   }
+}
+function refreshToday(){
+  S.meta.simDate = todayStr();
+  normalize();
 }
 function goHome(){
   const c = activeClient();
@@ -1973,6 +1996,10 @@ function renderExtra(){
 function renderLectura(){
   const c = activeClient();
   const r = S.monthlyReading;
+  if(!r.id){
+    document.getElementById('lecturaBody').innerHTML = `<div class="note-box">Todavía no hay ninguna lectura mensual publicada. Tu adiestrador la subirá próximamente.</div>`;
+    return;
+  }
   const claimed = c.lecturaClaimedIds.includes(r.id);
   const bonus = readingBonusAmount(c);
   let preview;
@@ -2070,7 +2097,7 @@ function unsubscribe(){
   const c = activeClient();
   c.subscriptionStatus = 'cancelled';
   saveState();
-  renderPerfil();
+  applyAuthView();
 }
 
 /* ---------------- AÑADIR PERRO ---------------- */
@@ -2117,49 +2144,128 @@ function submitEvaluation(){
   nav('screenPerfil');
 }
 
-/* ---------------- ONBOARDING ---------------- */
-function submitOnboarding(){
-  const c = activeClient();
+/* ---------------- AUTH: crear cuenta, login, logout, pasarela de pago ---------------- */
+function renderSignupScreen(){
+  ['obName','obPhone','obAddress','obPassword','obPassword2','obDogName','obDogBreed','obDogAge'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('signupError').textContent='';
+}
+async function submitSignupData(){
   const name = document.getElementById('obName').value.trim();
+  const phone = document.getElementById('obPhone').value.trim();
+  const address = document.getElementById('obAddress').value.trim();
   const dogName = document.getElementById('obDogName').value.trim();
-  if(!name || !dogName){ showToast('Completa al menos tu nombre y el de tu perro.', {type:'warn'}); return; }
-  c.name = name;
-  c.phone = document.getElementById('obPhone').value;
-  c.address = document.getElementById('obAddress').value;
+  const password = document.getElementById('obPassword').value;
+  const password2 = document.getElementById('obPassword2').value;
+  const errBox = document.getElementById('signupError');
+  errBox.textContent = '';
+  if(!name || !phone || !dogName){ errBox.textContent = 'Completa al menos tu nombre, tu teléfono y el nombre de tu perro.'; return; }
+  if(password.length < 6){ errBox.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+  if(password !== password2){ errBox.textContent = 'Las contraseñas no coinciden.'; return; }
+  if(S.clients.some(c=>c.phone===phone)){ errBox.textContent = 'Ya existe una cuenta con ese teléfono. Inicia sesión en su lugar.'; return; }
   const dog = makeDog({
     name: dogName,
     breed: document.getElementById('obDogBreed').value,
     age: document.getElementById('obDogAge').value,
   });
-  c.dogs = [dog];
-  c.selectedDogId = dog.id;
-  c.onboarded = true;
-  c.lastEntryDate = S.meta.simDate;
+  const salt = randomSalt();
+  const hash = await hashPassword(password, salt);
+  const client = makeClient({
+    id: uid('c'), name, phone, address,
+    dogs:[dog], selectedDogId: dog.id,
+    passwordSalt: salt, passwordHash: hash,
+    notifications:[{id:'n'+Date.now(), date:S.meta.simDate, title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. Activa tu suscripción para empezar a entrenar.', read:false}],
+  });
+  S.clients.push(client);
+  S.session = {role:'client', clientId:client.id};
   saveState();
-  goHome();
+  applyAuthView();
+}
+function renderClientLoginScreen(){
+  document.getElementById('loginPhone').value='';
+  document.getElementById('loginPassword').value='';
+  document.getElementById('loginError').textContent='';
+}
+async function submitClientLogin(){
+  const phone = document.getElementById('loginPhone').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errBox = document.getElementById('loginError');
+  errBox.textContent = '';
+  const c = S.clients.find(cl=>cl.phone===phone);
+  if(!c){ errBox.textContent = 'No existe ninguna cuenta con ese teléfono.'; return; }
+  const hash = await hashPassword(password, c.passwordSalt);
+  if(hash !== c.passwordHash){ errBox.textContent = 'Contraseña incorrecta.'; return; }
+  S.session = {role:'client', clientId:c.id};
+  saveState();
+  applyAuthView();
+}
+function renderAdminLoginScreen(){
+  document.getElementById('adminLoginPassword').value='';
+  document.getElementById('adminLoginError').textContent='';
+}
+async function submitAdminLogin(){
+  const password = document.getElementById('adminLoginPassword').value;
+  const errBox = document.getElementById('adminLoginError');
+  errBox.textContent = '';
+  const hash = await sha256Hex(password);
+  if(hash !== ADMIN_PASSWORD_HASH){ errBox.textContent = 'Contraseña incorrecta.'; return; }
+  S.session = {role:'admin'};
+  saveState();
+  applyAuthView();
+}
+function renderPaymentGate(){
+  const c = activeClient();
+  if(!c) return;
+  document.getElementById('paymentGateReason').textContent = c.subscriptionStatus==='cancelled'
+    ? 'Tu suscripción está dada de baja. Reactívala para volver a acceder.'
+    : 'Tu cuenta está creada. Activa tu suscripción para empezar.';
+}
+function payActivateSubscription(){
+  const c = activeClient();
+  if(!c) return;
+  c.subscriptionStatus = 'active';
+  saveState();
+  showToast('¡Pago realizado! Bienvenido a BalanceDog.', {icon:'🎉'});
+  applyAuthView();
+}
+function logout(){
+  S.session = null;
+  saveState();
+  applyAuthView();
+}
+function applyAuthView(){
+  const authWrap = document.getElementById('authAppWrap');
+  const clientWrap = document.getElementById('clientAppWrap');
+  const adminWrap = document.getElementById('adminApp');
+  if(!S.session){
+    authWrap.classList.remove('hidden');
+    clientWrap.classList.add('hidden');
+    adminWrap.classList.add('hidden');
+    nav('screenLanding');
+    return;
+  }
+  if(S.session.role==='admin'){
+    authWrap.classList.add('hidden');
+    clientWrap.classList.add('hidden');
+    adminWrap.classList.remove('hidden');
+    renderAdmin();
+    return;
+  }
+  const c = activeClient();
+  if(!c){ logout(); return; }
+  authWrap.classList.add('hidden');
+  adminWrap.classList.add('hidden');
+  clientWrap.classList.remove('hidden');
+  if(!canAccessApp(c)) nav('screenPaymentRequired');
+  else goHome();
 }
 
 /* ---------------- ADMIN ---------------- */
-function toggleView(){
-  S.meta.view = S.meta.view==='client' ? 'admin' : 'client';
-  saveState();
-  applyView();
-}
-function applyView(){
-  document.getElementById('clientAppWrap').classList.toggle('hidden', S.meta.view!=='client');
-  document.getElementById('adminApp').classList.toggle('hidden', S.meta.view!=='admin');
-  if(S.meta.view==='admin'){
-    renderAdmin();
-  } else {
-    // refresca la pantalla de cliente visible por si el admin cambió datos (p.ej. XP) mientras estaba en su panel
-    const activeScreen = document.querySelector('#phoneScreen .screen.active');
-    if(activeScreen && RENDERERS[activeScreen.id]) RENDERERS[activeScreen.id]();
-  }
-}
 function renderAdmin(){
   document.getElementById('adminDateLabel').textContent = humanDate(S.meta.simDate);
   const r = S.monthlyReading;
-  document.getElementById('adminReadingInfo').textContent = `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`;
+  document.getElementById('adminReadingInfo').textContent = r.id
+    ? `Actual: "${r.title}" (publicada ${humanDate(r.uploadedDate)})`
+    : 'Todavía no has subido ninguna lectura mensual.';
   document.getElementById('adminCapacity').value = S.admin.residenceCapacity;
   renderAdminExtra();
   renderAdminCalendar();
@@ -2421,7 +2527,7 @@ function adminCancelTrainingBooking(clientId, idx){
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva cancelada', body:`Tu adiestrador ha cancelado: ${b.service} (${when}).`, read:false});
   saveState();
   openClientModal(clientId);
-  if(S.meta.view==='admin') renderAdminAgenda();
+  if(S.session && S.session.role==='admin') renderAdminAgenda();
 }
 function adminCancelResidenceBooking(clientId, idx){
   const c = S.clients.find(x=>x.id===clientId);
@@ -2433,7 +2539,7 @@ function adminCancelResidenceBooking(clientId, idx){
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva de residencia cancelada', body:`Tu adiestrador ha cancelado la reserva del ${humanDate(b.checkin)} al ${humanDate(b.checkout)}.`, read:false});
   saveState();
   openClientModal(clientId);
-  if(S.meta.view==='admin') renderAdminAgenda();
+  if(S.session && S.session.role==='admin') renderAdminAgenda();
 }
 function adminCancelGuarderiaBooking(clientId, idx){
   const c = S.clients.find(x=>x.id===clientId);
@@ -2445,56 +2551,16 @@ function adminCancelGuarderiaBooking(clientId, idx){
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Guardería cancelada', body:'Tu adiestrador ha cancelado tu suscripción a la guardería de mañana.', read:false});
   saveState();
   openClientModal(clientId);
-  if(S.meta.view==='admin') renderAdminAgenda();
+  if(S.session && S.session.role==='admin') renderAdminAgenda();
 }
 function closeClientModal(){ document.getElementById('clientModal').classList.add('hidden'); }
 
-/* ---------------- DEBUG BAR ---------------- */
-function refreshDebugBar(){
-  document.getElementById('dbgDateLabel').textContent = humanDate(S.meta.simDate) + ' ('+S.meta.simDate+')';
-  document.getElementById('dbgDateInput').value = S.meta.simDate;
-}
-function afterDateChange(){
-  normalize();
-  refreshDebugBar();
-  const activeScreen = document.querySelector('.screen.active');
-  if(activeScreen && RENDERERS[activeScreen.id]) RENDERERS[activeScreen.id]();
-  if(S.meta.view==='admin') renderAdmin();
-}
-function debugShiftDay(n){
-  S.meta.simDate = addDays(S.meta.simDate, n);
-  saveState();
-  afterDateChange();
-}
-function debugSetDate(v){
-  if(!v) return;
-  S.meta.simDate = v;
-  saveState();
-  afterDateChange();
-}
-function debugGotoNextMonth(){
-  const d = parseDate(S.meta.simDate);
-  d.setUTCMonth(d.getUTCMonth()+1, 1);
-  S.meta.simDate = fmtDate(d);
-  saveState();
-  afterDateChange();
-}
-function debugShowOnboarding(){
-  const c = activeClient();
-  c.onboarded = false;
-  saveState();
-  S.meta.view='client'; saveState(); applyView();
-  nav('screenOnboarding');
-}
-function debugResetState(){
-  if(!confirm('¿Reiniciar todos los datos del prototipo?')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  loadState();
-  boot();
-}
-
 /* ---------------- RENDERERS MAP + BOOT ---------------- */
 const RENDERERS = {
+  screenClientLogin: renderClientLoginScreen,
+  screenAdminLogin: renderAdminLoginScreen,
+  screenOnboarding: renderSignupScreen,
+  screenPaymentRequired: renderPaymentGate,
   screenHome: renderHome,
   screenAgenda: renderAgenda,
   screenNotifications: renderNotifications,
@@ -2514,12 +2580,8 @@ const RENDERERS = {
 };
 
 function boot(){
-  normalize();
-  refreshDebugBar();
-  applyView();
-  const c = activeClient();
-  if(!c.onboarded) nav('screenOnboarding');
-  else goHome();
+  refreshToday();
+  applyAuthView();
 }
 
 window.addEventListener('error', function(ev){
