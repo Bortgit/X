@@ -784,7 +784,6 @@ const MEMBERSHIP_PRICE_EUR = 8;
 // un prototipo sin servidor propio, cualquiera que mire el código fuente podría intentar
 // forzarla por fuerza bruta (probar contraseñas y comparar el hash). Para un acceso de admin
 // realmente seguro hace falta backend propio que verifique la contraseña del lado del servidor.
-const ADMIN_PASSWORD_HASH = 'b7813fab7536afc71b115a930379bf96b03ccea0193366c231b5635ca2a5480d';
 // Horario fijo de adiestramiento: lun/jue mañana 10:00 + tarde 17:30; mar/mié/vie solo mañanas 10:00-11:00-12:00; sáb/dom cerrado.
 function isTrainingWeekend(d){
   const dow = parseDate(d).getUTCDay(); // 0=domingo ... 6=sábado
@@ -1120,13 +1119,259 @@ function loadState(){
     if(raw){
       S = JSON.parse(raw);
       migrateLoadedState();
+      if(!authToken){ S.session = null; S.clients = []; }
       return;
     }
   }catch(e){ console.warn('Estado corrupto, reiniciando', e); }
   S = makeDefaultState();
-  saveState();
+  localSave();
 }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }
+function localSave(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){ console.warn('No se pudo guardar en el móvil', e); } }
+function saveState(){ localSave(); schedulePush(); }
+
+/* ---------------- SINCRONIZACIÓN con el servidor (base de datos compartida) ----------------
+   Cada cuenta y los ajustes del admin viven en el servidor. Esta app guarda una copia local
+   (para ir rápido y funcionar un momento sin red) y la sincroniza: cada cambio se envía con
+   la versión (rev) que se conocía; si alguien más cambió lo mismo, se fusionan ambos cambios. */
+const TOKEN_KEY = 'balanceddog_token_v1';
+const BASE_KEY = 'balanceddog_syncbase_v1';
+let authToken = null;
+try{ authToken = localStorage.getItem(TOKEN_KEY); }catch(e){}
+let syncBase = {clients:{}, settings:{}, stamp:null};
+try{ const b = JSON.parse(localStorage.getItem(BASE_KEY)||'null'); if(b && b.clients) syncBase = b; }catch(e){}
+function saveBase(){ try{ localStorage.setItem(BASE_KEY, JSON.stringify(syncBase)); }catch(e){} }
+function setToken(t){
+  authToken = t;
+  try{ if(t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }catch(e){}
+}
+function resetSyncBase(){ syncBase = {clients:{}, settings:{}, stamp:null}; saveBase(); }
+
+function authFetch(path, opts){
+  opts = Object.assign({}, opts);
+  opts.headers = Object.assign({}, opts.headers || {}, authToken ? {Authorization:'Bearer '+authToken} : {});
+  return fetch(path, opts).then(r=>{
+    if(r.status===401 && authToken && path.indexOf('/api/auth')!==0) sessionExpired();
+    return r;
+  });
+}
+async function api(path, method, body){
+  let r;
+  try{
+    r = await authFetch(path, {method:method||'GET', headers:{'Content-Type':'application/json'}, body: body===undefined?undefined:JSON.stringify(body)});
+  }catch(e){ const err = new Error('No se pudo conectar. Revisa tu conexión.'); err.network = true; throw err; }
+  const out = await r.json().catch(()=>({}));
+  if(!r.ok){ const err = new Error(out.error || 'Error de conexión'); err.status = r.status; throw err; }
+  return out;
+}
+function sessionExpired(){
+  if(!S || !S.session) return;
+  setToken(null); resetSyncBase();
+  S.session = null; S.clients = [];
+  localSave();
+  applyAuthView();
+  showToast('Tu sesión ha caducado. Vuelve a entrar.', {type:'warn', duration:4500});
+}
+
+// JSON con claves ordenadas: sirve para saber si algo ha cambiado de verdad.
+function canon(v){
+  if(Array.isArray(v)) return '['+v.map(canon).join(',')+']';
+  if(v && typeof v==='object') return '{'+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';
+  return JSON.stringify(v);
+}
+const snapshot = v => JSON.parse(JSON.stringify(v));
+function clientData(c){
+  const d = snapshot(c);
+  delete d.passwordSalt; delete d.passwordHash; delete d._shadow;
+  return d;
+}
+function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
+function idArr(a){ return Array.isArray(a) && a.every(x=>isObj(x) && typeof x.id==='string'); }
+// Fusión de 3 vías: b = última versión sincronizada, m = la mía, t = la del servidor.
+function merge3(b, m, t){
+  if(canon(m)===canon(t)) return m;
+  if(canon(m)===canon(b)) return t;
+  if(canon(t)===canon(b)) return m;
+  if(isObj(m) && isObj(t)){
+    const bb = isObj(b) ? b : {};
+    const out = {};
+    new Set([...Object.keys(m), ...Object.keys(t), ...Object.keys(bb)]).forEach(k=>{
+      const v = merge3(bb[k], m[k], t[k]);
+      if(v!==undefined) out[k] = v;
+    });
+    return out;
+  }
+  if(idArr(m) && idArr(t)){
+    const bm = new Map((idArr(b)?b:[]).map(x=>[x.id,x]));
+    const mm = new Map(m.map(x=>[x.id,x]));
+    const out = [], seen = new Set();
+    t.forEach(x=>{
+      seen.add(x.id);
+      if(mm.has(x.id)) out.push(merge3(bm.get(x.id), mm.get(x.id), x));
+      else if(!(bm.has(x.id) && canon(bm.get(x.id))===canon(x))) out.push(x); // si yo lo borré y no cambió, sigue borrado
+    });
+    m.forEach(x=>{
+      if(seen.has(x.id)) return;
+      if(!bm.has(x.id) || canon(bm.get(x.id))!==canon(x)) out.push(x); // nuevo mío, o cambiado por mí
+    });
+    return out;
+  }
+  if(Array.isArray(m) && Array.isArray(t) && m.concat(t).every(x=>typeof x!=='object')) return Array.from(new Set(t.concat(m)));
+  return m; // mismo dato cambiado por los dos: gana mi cambio
+}
+
+function settingsFromState(){
+  return {
+    admin:{residenceCapacity:S.admin.residenceCapacity, calendarClosures:S.admin.calendarClosures},
+    reading:S.monthlyReading,
+    extra:{list:S.extraContent},
+  };
+}
+function setSettingInState(key, v){
+  if(key==='admin') S.admin = Object.assign({}, S.admin, v);
+  else if(key==='reading') S.monthlyReading = v;
+  else if(key==='extra') S.extraContent = (v && v.list) || [];
+}
+function resetSharedDefaults(){
+  const d = makeDefaultState();
+  S.admin = d.admin; S.monthlyReading = d.monthlyReading; S.extraContent = d.extraContent;
+}
+function ownedIds(){
+  if(!S.session) return [];
+  if(S.session.role==='admin') return S.clients.filter(c=>!c._shadow).map(c=>c.id);
+  return [S.session.clientId];
+}
+
+function collectDirty(){
+  const clients = [], settings = [];
+  ownedIds().forEach(id=>{
+    const c = S.clients.find(x=>x.id===id), b = syncBase.clients[id];
+    if(!c || !b) return;
+    const data = clientData(c);
+    if(canon(data)!==canon(b.data)) clients.push({id, rev:b.rev, data});
+  });
+  if(S.session && S.session.role==='admin'){
+    const cur = settingsFromState();
+    Object.keys(cur).forEach(key=>{
+      const b = syncBase.settings[key];
+      if(!b || canon(cur[key])!==canon(b.value)) settings.push({key, rev: b ? b.rev : 0, value: snapshot(cur[key])});
+    });
+  }
+  return {clients, settings};
+}
+
+let pushing = false, pushQueued = false, pushTimer = null;
+function schedulePush(){
+  if(!authToken || !S || !S.session) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 700);
+}
+async function pushNow(){
+  clearTimeout(pushTimer);
+  if(!authToken || !S || !S.session) return;
+  if(pushing){ pushQueued = true; return; }
+  pushing = true;
+  try{
+    for(let attempt=0; attempt<4; attempt++){
+      const body = collectDirty();
+      if(!body.clients.length && !body.settings.length) break;
+      const out = await api('/api/push', 'POST', body);
+      let conflict = false;
+      out.results.forEach(x=>{
+        if(x.ok){
+          if(x.id){ const sent = body.clients.find(c=>c.id===x.id); syncBase.clients[x.id] = {rev:x.rev, data:sent.data}; }
+          else { const sent = body.settings.find(s=>s.key===x.key); syncBase.settings[x.key] = {rev:x.rev, value:sent.value}; }
+        }else if(x.conflict){
+          conflict = true;
+          if(x.id){
+            const mine = clientData(S.clients.find(c=>c.id===x.id));
+            const b = syncBase.clients[x.id];
+            const merged = merge3(b ? b.data : {}, mine, x.current.data);
+            const i = S.clients.findIndex(c=>c.id===x.id);
+            S.clients[i] = Object.assign(makeClient({}), merged);
+            syncBase.clients[x.id] = {rev:x.current.rev, data:snapshot(x.current.data)};
+          }else{
+            const cur = settingsFromState()[x.key];
+            const b = syncBase.settings[x.key];
+            const merged = x.current.value==null ? cur : merge3(b ? b.value : {}, cur, x.current.value);
+            setSettingInState(x.key, merged);
+            syncBase.settings[x.key] = {rev:x.current.rev, value:snapshot(x.current.value==null ? null : x.current.value)};
+          }
+        }
+      });
+      saveBase(); localSave();
+      if(!conflict) break;
+    }
+  }catch(e){ /* sin conexión o error: los cambios siguen guardados aquí y se reenvían después */ }
+  finally{
+    pushing = false;
+    if(pushQueued){ pushQueued = false; schedulePush(); }
+  }
+}
+
+function applyServer(view){
+  const role = S.session.role;
+  const next = [];
+  (view.clients||[]).forEach(sc=>{
+    if(role==='client' && sc.id!==S.session.clientId){ next.push(Object.assign(makeClient({}), sc.data)); return; }
+    const local = S.clients.find(c=>c.id===sc.id), b = syncBase.clients[sc.id];
+    let data = sc.data;
+    if(local && b && canon(clientData(local))!==canon(b.data)) data = merge3(b.data, clientData(local), sc.data);
+    syncBase.clients[sc.id] = {rev:sc.rev, data:snapshot(sc.data)};
+    next.push(Object.assign(makeClient({}), data));
+  });
+  S.clients = next;
+  Object.keys(view.settings||{}).forEach(key=>{
+    const sv = view.settings[key], b = syncBase.settings[key];
+    const cur = settingsFromState()[key];
+    let v = sv.value;
+    if(b && canon(cur)!==canon(b.value)) v = merge3(b.value, cur, sv.value);
+    setSettingInState(key, v);
+    syncBase.settings[key] = {rev:sv.rev, value:snapshot(sv.value)};
+  });
+  migrateLoadedState();
+}
+// Devuelve true si llegaron datos nuevos.
+async function pull(force){
+  if(!authToken || !S || !S.session) return false;
+  const q = (force || !syncBase.stamp) ? '' : '?stamp='+encodeURIComponent(syncBase.stamp);
+  const view = await api('/api/state'+q);
+  if(view.unchanged) return false;
+  if(pushing || !S.session) return false; // mientras se envía algo no se mezcla
+  applyServer(view);
+  syncBase.stamp = view.stamp;
+  saveBase(); localSave();
+  return true;
+}
+function afterPull(){
+  if(!S.session) return;
+  if(S.session.role==='admin'){
+    const a = document.activeElement;
+    if(!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) renderAdmin();
+    return;
+  }
+  const c = activeClient();
+  if(!c){ logout(); return; }
+  if(!canAccessApp(c)){ applyAuthView(); return; }
+  const scr = document.querySelector('.screen.active');
+  if(scr && scr.id==='screenHome') renderHome();
+}
+async function syncCycle(){
+  if(document.hidden || !authToken || !S || !S.session) return;
+  try{ await pushNow(); if(await pull(false)) afterPull(); }catch(e){}
+}
+setInterval(syncCycle, 15000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncCycle(); });
+window.addEventListener('online', syncCycle);
+
+// Tras entrar: empieza de cero con los datos del servidor.
+async function startSyncedSession(session){
+  S.session = session;
+  S.clients = [];
+  resetSharedDefaults();
+  resetSyncBase();
+  await pull(true);
+}
+
 function activeClient(){
   if(!S.session || S.session.role!=='client') return null;
   return S.clients.find(c=>c.id===S.session.clientId) || null;
@@ -2142,7 +2387,7 @@ async function unsubscribe(){
   const c = activeClient();
   if(c.stripeSubscriptionId){
     try{
-      const r = await fetch('/api/subscription', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.stripeSubscriptionId, action:'cancel'})});
+      const r = await authFetch('/api/subscription', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.stripeSubscriptionId, action:'cancel'})});
       if(!r.ok) throw new Error('cancel');
     }catch(e){
       showToast('No se pudo cancelar la suscripción. Inténtalo de nuevo.', {type:'warn', duration:4500});
@@ -2215,23 +2460,27 @@ async function submitSignupData(){
   if(!name || !phone || !dogName){ errBox.textContent = 'Completa al menos tu nombre, tu teléfono y el nombre de tu perro.'; return; }
   if(password.length < 6){ errBox.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
   if(password !== password2){ errBox.textContent = 'Las contraseñas no coinciden.'; return; }
-  if(S.clients.some(c=>c.phone===phone)){ errBox.textContent = 'Ya existe una cuenta con ese teléfono. Inicia sesión en su lugar.'; return; }
   const dog = makeDog({
     name: dogName,
     breed: document.getElementById('obDogBreed').value,
     age: document.getElementById('obDogAge').value,
   });
-  const salt = randomSalt();
-  const hash = await hashPassword(password, salt);
   const client = makeClient({
     id: uid('c'), name, phone, address,
     dogs:[dog], selectedDogId: dog.id,
-    passwordSalt: salt, passwordHash: hash,
     notifications:[{id:'n'+Date.now(), date:S.meta.simDate, title:'Bienvenido a BalancedDog', body:'Tu cuenta ha sido creada correctamente. Activa tu suscripción para empezar a entrenar.', read:false}],
   });
-  S.clients.push(client);
-  S.session = {role:'client', clientId:client.id};
-  saveState();
+  try{
+    const r = await api('/api/auth', 'POST', {action:'signup', password, client:clientData(client)});
+    setToken(r.token);
+    S.session = {role:'client', clientId:client.id};
+    S.clients = [client];
+    resetSharedDefaults();
+    resetSyncBase();
+    syncBase.clients[client.id] = {rev:r.rev, data:clientData(client)};
+    saveBase(); localSave();
+    await pull(true).catch(()=>{});
+  }catch(e){ errBox.textContent = e.message; return; }
   applyAuthView();
 }
 function renderClientLoginScreen(){
@@ -2244,12 +2493,13 @@ async function submitClientLogin(){
   const password = document.getElementById('loginPassword').value;
   const errBox = document.getElementById('loginError');
   errBox.textContent = '';
-  const c = S.clients.find(cl=>cl.phone===phone);
-  if(!c){ errBox.textContent = 'No existe ninguna cuenta con ese teléfono.'; return; }
-  const hash = await hashPassword(password, c.passwordSalt);
-  if(hash !== c.passwordHash){ errBox.textContent = 'Contraseña incorrecta.'; return; }
-  S.session = {role:'client', clientId:c.id};
-  saveState();
+  try{
+    const r = await api('/api/auth', 'POST', {action:'login', phone, password});
+    setToken(r.token);
+    await startSyncedSession({role:'client', clientId:r.id});
+    if(!activeClient()) throw new Error('No se pudieron cargar tus datos. Inténtalo de nuevo.');
+    localSave();
+  }catch(e){ setToken(null); errBox.textContent = e.message; return; }
   applyAuthView();
 }
 function renderAdminLoginScreen(){
@@ -2260,10 +2510,12 @@ async function submitAdminLogin(){
   const password = document.getElementById('adminLoginPassword').value;
   const errBox = document.getElementById('adminLoginError');
   errBox.textContent = '';
-  const hash = await sha256Hex(password);
-  if(hash !== ADMIN_PASSWORD_HASH){ errBox.textContent = 'Contraseña incorrecta.'; return; }
-  S.session = {role:'admin'};
-  saveState();
+  try{
+    const r = await api('/api/auth', 'POST', {action:'admin', password});
+    setToken(r.token);
+    await startSyncedSession({role:'admin'});
+    localSave();
+  }catch(e){ setToken(null); errBox.textContent = e.message; return; }
   applyAuthView();
 }
 function renderPaymentGate(){
@@ -2322,8 +2574,8 @@ async function startPayment(kind, serverPayload, applyData){
   showToast('Preparando el pago seguro…', {icon:'🔒', duration:4000});
   try{
     const ref = newPayRef();
-    const payload = Object.assign({kind, ref, clientName:c.name, clientPhone:c.phone}, serverPayload);
-    const r = await fetch('/api/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const payload = Object.assign({kind, ref}, serverPayload);
+    const r = await authFetch('/api/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
     const out = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(out.error || 'No se pudo iniciar el pago');
     if(out.free){ // descuento del 100 %: no hay nada que cobrar
@@ -2364,7 +2616,7 @@ async function handlePaymentReturn(){
   showToast('Confirmando tu pago…', {icon:'⏳', duration:4000});
   let v;
   try{
-    const r = await fetch('/api/verify?session_id='+encodeURIComponent(sid));
+    const r = await authFetch('/api/verify?session_id='+encodeURIComponent(sid));
     v = await r.json();
     if(!r.ok) throw new Error(v.error || 'error');
   }catch(e){
@@ -2387,6 +2639,7 @@ async function handlePaymentReturn(){
   localStorage.setItem(DONE_PAY_KEY, JSON.stringify(done.slice(-50)));
   localStorage.removeItem(PENDING_PAY_KEY);
   PAY_APPLIERS[pending.kind](pending.data, v);
+  await pushNow();
 }
 
 // Sincroniza el estado de la suscripción mensual con Stripe (renovaciones, impagos, bajas).
@@ -2394,7 +2647,7 @@ async function syncSubscription(){
   const c = activeClient();
   if(!c || !c.stripeSubscriptionId) return;
   try{
-    const r = await fetch('/api/subscription?id='+encodeURIComponent(c.stripeSubscriptionId));
+    const r = await authFetch('/api/subscription?id='+encodeURIComponent(c.stripeSubscriptionId));
     if(!r.ok) return;
     const s = await r.json();
     const map = {active:'active', trialing:'active', past_due:'grace', unpaid:'cancelled', canceled:'cancelled', incomplete_expired:'cancelled'};
@@ -2406,9 +2659,11 @@ async function syncSubscription(){
     }
   }catch(e){ /* sin conexión: se mantiene el estado actual */ }
 }
-function logout(){
-  S.session = null;
-  saveState();
+async function logout(){
+  try{ await pushNow(); }catch(e){}
+  setToken(null); resetSyncBase();
+  S.session = null; S.clients = [];
+  localSave();
   applyAuthView();
 }
 function applyAuthView(){
@@ -2776,7 +3031,11 @@ function boot(){
   applyAuthView();
   // Al volver de pagar no se repite el vídeo de entrada.
   if(/[?&]pago=/.test(location.search)) dismissIntro(); else initIntro();
-  handlePaymentReturn().finally(syncSubscription);
+  (async ()=>{
+    try{ if(authToken && S.session){ await pushNow(); await pull(true); afterPull(); } }catch(e){}
+    try{ await handlePaymentReturn(); }catch(e){ console.warn(e); }
+    syncSubscription();
+  })();
 }
 
 window.addEventListener('error', function(ev){

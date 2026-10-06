@@ -2,6 +2,8 @@
 // El precio SIEMPRE se calcula aquí, nunca se fía del importe que mande la app.
 
 const { stripe, originFor, sendJson } = require('./_stripe');
+const { db, enc } = require('./_db');
+const { requireAuth } = require('./_auth');
 
 const MEMBERSHIP_CENTS = 800; // 8 €/mes
 const RESID_FIRST_DOG = 2000; // 20 €/noche
@@ -65,6 +67,9 @@ function priceFor(body) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Método no permitido' });
+  const auth = requireAuth(req, res);
+  if (!auth) return;
+  if (auth.role !== 'client') return sendJson(res, 403, { error: 'Solo los clientes pueden pagar' });
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     if (!REF_RE.test(String(body.ref || ''))) throw new Error('Referencia no válida');
@@ -85,12 +90,14 @@ module.exports = async (req, res) => {
     const origin = originFor(req);
 
     // Datos del cliente solo para que tú los veas en el panel de Stripe y puedas
-    // localizar cualquier pago (la app guarda las cuentas en el móvil de cada cliente).
+    // localizar cualquier pago (nombre y teléfono salen de la cuenta guardada en el servidor).
     const clean = (v, n) => String(v || '').replace(/[\r\n]+/g, ' ').trim().slice(0, n);
-    const clientName = clean(body.clientName, 100);
-    const clientPhone = clean(body.clientPhone, 30);
+    const rows = await db('GET', `clients?select=phone,data&id=eq.${enc(auth.id)}`);
+    if (!rows.length) throw new Error('Cuenta no encontrada');
+    const clientName = clean(rows[0].data && rows[0].data.name, 100);
+    const clientPhone = clean(rows[0].phone, 30);
     const metadata = {
-      kind: body.kind, ref: body.ref, base_cents: baseCents, discount_cents: discount,
+      kind: body.kind, ref: body.ref, client_id: auth.id, base_cents: baseCents, discount_cents: discount,
       cliente: clientName, telefono: clientPhone,
     };
     const description = `${name} — ${clientName} ${clientPhone}`.slice(0, 300);
