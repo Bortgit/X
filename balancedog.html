@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BalanceDog — Prototipo funcional</title>
+<title>BalancedDog — Prototipo funcional</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -363,9 +363,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <!-- ============ LANDING ============ -->
       <div class="screen active" id="screenLanding">
         <div class="screen-pad" style="padding-top:54px;">
-          <div class="auth-eyebrow"><div class="em">🐾</div><h1>BalanceDog Club</h1></div>
+          <div class="auth-eyebrow"><div class="em">🐾</div><h1>BalancedDog Club</h1></div>
           <div class="card card-accent">
-            <p class="card-sub" style="font-size:14px;line-height:1.6;color:var(--text);">En BalanceDog Club encontrarás sesiones de adiestramiento, información y trucos para cambiar conductas, artículos científicos, y además la posibilidad de adelantarte a cualquiera para reservar tanto sesiones de adiestramiento como residencia y guardería.</p>
+            <p class="card-sub" style="font-size:14px;line-height:1.6;color:var(--text);">En BalancedDog Club encontrarás sesiones de adiestramiento, información y trucos para cambiar conductas, artículos científicos, y además la posibilidad de adelantarte a cualquiera para reservar tanto sesiones de adiestramiento como residencia y guardería.</p>
           </div>
           <button class="btn" style="margin-top:18px;" onclick="nav('screenOnboarding')">Crear cuenta</button>
           <button class="btn btn-outline" style="margin-top:10px;" onclick="nav('screenClientLogin')">Ya tengo cuenta</button>
@@ -433,7 +433,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <div class="card-title">🔒 Activa tu suscripción</div>
             <p class="card-sub" id="paymentGateReason" style="margin-top:6px;">—</p>
           </div>
-          <div class="pricebox"><div class="line tot"><span>BalanceDog Club</span><span>8,00€ / mes</span></div></div>
+          <div class="pricebox"><div class="line tot"><span>BalancedDog Club</span><span>8,00€ / mes</span></div></div>
           <div class="card">
             <div class="field"><label>Número de tarjeta</label><input inputmode="numeric" placeholder="1234 5678 9012 3456"></div>
             <div style="display:flex;gap:10px;">
@@ -684,7 +684,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 
   <!-- ============ ADMIN ============ -->
   <div id="adminApp" class="hidden">
-    <h1>🐾 BalanceDog — Panel de administrador</h1>
+    <h1>🐾 BalancedDog — Panel de administrador</h1>
     <div class="sub">Fecha actual: <b id="adminDateLabel">—</b> · <button class="tab-btn" onclick="logout()">Cerrar sesión</button></div>
 
     <div class="admin-section">
@@ -2173,7 +2173,7 @@ async function submitSignupData(){
     id: uid('c'), name, phone, address,
     dogs:[dog], selectedDogId: dog.id,
     passwordSalt: salt, passwordHash: hash,
-    notifications:[{id:'n'+Date.now(), date:S.meta.simDate, title:'Bienvenido a BalanceDog', body:'Tu cuenta ha sido creada correctamente. Activa tu suscripción para empezar a entrenar.', read:false}],
+    notifications:[{id:'n'+Date.now(), date:S.meta.simDate, title:'Bienvenido a BalancedDog', body:'Tu cuenta ha sido creada correctamente. Activa tu suscripción para empezar a entrenar.', read:false}],
   });
   S.clients.push(client);
   S.session = {role:'client', clientId:client.id};
@@ -2224,7 +2224,7 @@ function payActivateSubscription(){
   if(!c) return;
   c.subscriptionStatus = 'active';
   saveState();
-  showToast('¡Pago realizado! Bienvenido a BalanceDog.', {icon:'🎉'});
+  showToast('¡Pago realizado! Bienvenido a BalancedDog.', {icon:'🎉'});
   applyAuthView();
 }
 function logout(){
