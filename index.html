@@ -459,12 +459,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           </div>
           <div class="pricebox"><div class="line tot"><span>BalancedDog Club</span><span>8,00€ / mes</span></div></div>
           <div class="card">
-            <div class="field"><label>Número de tarjeta</label><input inputmode="numeric" placeholder="1234 5678 9012 3456"></div>
-            <div style="display:flex;gap:10px;">
-              <div class="field" style="flex:1;"><label>Caducidad</label><input placeholder="MM/AA"></div>
-              <div class="field" style="flex:1;"><label>CVC</label><input inputmode="numeric" placeholder="123"></div>
-            </div>
-            <p class="extra-note" style="margin-bottom:10px;">Cobro de prueba del prototipo — no se realiza ningún cargo real todavía.</p>
+            <p class="extra-note" style="margin-bottom:10px;">🔒 Pagarás con tarjeta en la página segura de Stripe. Se renueva cada mes y puedes darte de baja cuando quieras desde tu perfil.</p>
             <button class="btn" onclick="payActivateSubscription()">Pagar 8€ y activar mi cuenta</button>
           </div>
           <button class="btn btn-outline" style="margin-top:10px;" onclick="logout()">Cerrar sesión</button>
@@ -1521,7 +1516,7 @@ function renderTrainingSlotsSummary(){
 function updateTrainingPricebox(){
   const c = activeClient();
   const needed = trainingSessionsNeeded();
-  const discount = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const discount = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
   const final = (selectedService.price - discount).toFixed(2);
   document.getElementById('trainingPricebox').innerHTML = `
     <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
@@ -1533,23 +1528,33 @@ function payTrainingBooking(){
   const c = activeClient();
   const needed = trainingSessionsNeeded();
   if(trainingSel.slots.length !== needed) return;
-  const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
-  const usedXp = Math.round(discountEur/XP_TO_EUR);
-  c.xpMonthly -= usedXp;
+  const discountEur = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
+  startPayment('training', {service:selectedService.id, discountCents:Math.round(discountEur*100)}, {
+    serviceId:selectedService.id, dogId:trainingSel.dogId,
+    slots:trainingSel.slots.map(s=>({date:s.date, hour:s.hour})), discountEur,
+  });
+}
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago (o no hay nada que cobrar).
+function applyTrainingBooking(d){
+  const c = activeClient();
+  const svc = SERVICES.find(s=>s.id===d.serviceId);
+  const needed = d.slots.length;
+  const usedXp = Math.round(d.discountEur/XP_TO_EUR);
+  c.xpMonthly = Math.max(0, c.xpMonthly - usedXp);
   const bonoId = needed>1 ? 'bono'+Date.now() : null;
-  trainingSel.slots.forEach((slot,i)=>{
+  d.slots.forEach((slot,i)=>{
     c.bookingsTraining.push({
-      date:slot.date, hour:slot.hour, service:selectedService.name, dogId:trainingSel.dogId,
-      price: i===0 ? selectedService.price : 0,
-      discount: i===0 ? discountEur : 0,
-      paidAmount: i===0 ? selectedService.price-discountEur : 0,
+      date:slot.date, hour:slot.hour, service:svc.name, dogId:d.dogId,
+      price: i===0 ? svc.price : 0,
+      discount: i===0 ? d.discountEur : 0,
+      paidAmount: i===0 ? svc.price-d.discountEur : 0,
       paid:true, createdSimDate:S.meta.simDate,
       bonoId, bonoIndex:i+1, bonoTotal:needed,
     });
   });
-  const waNote = selectedService.isVideocall ? ` Recibirás la videollamada por WhatsApp a esa hora.` : '';
-  const datesTxt = trainingSel.slots.map(s=>`${humanDate(s.date)} ${s.hour}`).join(', ');
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${selectedService.name}" (${datesTxt}) ha sido confirmada.${waNote}`, read:false});
+  const waNote = svc.isVideocall ? ` Recibirás la videollamada por WhatsApp a esa hora.` : '';
+  const datesTxt = d.slots.map(s=>`${humanDate(s.date)} ${s.hour}`).join(', ');
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva confirmada', body:`Tu reserva de "${svc.name}" (${datesTxt}) ha sido confirmada.${waNote}`, read:false});
   saveState();
   showToast('¡Reserva confirmada y pagada!', {icon:'📅'});
   goHome();
@@ -1600,7 +1605,7 @@ function pickDiyGroup(g){
 }
 function updateDiyPricebox(){
   const c = activeClient();
-  const discount = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
+  const discount = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
   const final = (selectedService.price - discount).toFixed(2);
   document.getElementById('diyPricebox').innerHTML = `
     <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
@@ -1611,18 +1616,26 @@ function updateDiyPricebox(){
 function payDiyBooking(){
   const c = activeClient();
   if(!diySel.group) return;
-  const discountEur = Math.min(c.xpMonthly*XP_TO_EUR, selectedService.price);
-  const usedXp = Math.round(discountEur/XP_TO_EUR);
-  c.xpMonthly -= usedXp;
-  const schedule = `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===diySel.group).label}`;
+  const discountEur = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
+  startPayment('diy', {service:selectedService.id, discountCents:Math.round(discountEur*100)}, {
+    serviceId:selectedService.id, dogId:diySel.dogId, group:diySel.group, discountEur,
+  });
+}
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago (o no hay nada que cobrar).
+function applyDiyBooking(d){
+  const c = activeClient();
+  const svc = SERVICES.find(s=>s.id===d.serviceId);
+  const usedXp = Math.round(d.discountEur/XP_TO_EUR);
+  c.xpMonthly = Math.max(0, c.xpMonthly - usedXp);
+  const schedule = `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===d.group).label}`;
   c.bookingsTraining.push({
-    service:selectedService.name, dogId:diySel.dogId, diyServiceId:selectedService.id, diyGroup:diySel.group,
+    service:svc.name, dogId:d.dogId, diyServiceId:svc.id, diyGroup:d.group,
     schedule, recurring:true,
-    price:selectedService.price, discount:discountEur, paidAmount:selectedService.price-discountEur,
+    price:svc.price, discount:d.discountEur, paidAmount:svc.price-d.discountEur,
     paid:true, createdSimDate:S.meta.simDate,
   });
-  const dogName = c.dogs.find(d=>d.id===diySel.dogId).name;
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Suscripción DIY confirmada', body:`${selectedService.name} para ${dogName}: ${schedule}.`, read:false});
+  const dogName = c.dogs.find(x=>x.id===d.dogId).name;
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Suscripción DIY confirmada', body:`${svc.name} para ${dogName}: ${schedule}.`, read:false});
   saveState();
   showToast('¡Suscripción DIY confirmada y pagada!', {icon:'🔁'});
   goHome();
@@ -1703,7 +1716,7 @@ function checkResidenceAvailability(){
   const dogIds = residDogSelection==='both' ? c.dogs.map(d=>d.id) : [residDogSelection];
   const pricePerNight = dogIds.length>1 ? RESID_PRICE_FIRST_DOG+RESID_PRICE_SECOND_DOG : RESID_PRICE_FIRST_DOG;
   const total = nights.length*pricePerNight;
-  const discount = Math.min(c.xpBank*XP_TO_EUR, total);
+  const discount = effectiveDiscount(total, c.xpBank*XP_TO_EUR);
   const final = (total-discount).toFixed(2);
   const dogNames = joinNames(dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
   pendingResidBooking = {checkin, checkout, nights:nights.length, dogIds, total, discount};
@@ -1720,9 +1733,13 @@ function checkResidenceAvailability(){
     <button class="btn" onclick="payResidenceBooking()">Reservar y pagar (simulado)</button>`;
 }
 function payResidenceBooking(){
-  const c = activeClient();
   const b = pendingResidBooking;
   if(!b) return;
+  startPayment('residence', {checkin:b.checkin, checkout:b.checkout, dogCount:b.dogIds.length, discountCents:Math.round(b.discount*100)}, b);
+}
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago (o no hay nada que cobrar).
+function applyResidenceBooking(b){
+  const c = activeClient();
   c.bookingsResidencia.push({checkin:b.checkin, checkout:b.checkout, nights:b.nights, dogIds:b.dogIds, total:b.total, discount:b.discount, paidAmount:b.total-b.discount, paid:true, createdSimDate:S.meta.simDate});
   c.xpBank = 0;
   const dogNames = joinNames(b.dogIds.map(id=>c.dogs.find(d=>d.id===id).name));
@@ -1833,7 +1850,7 @@ function renderGuarderiaResult(){
     return {monday, friday, lost, serviceStart, price:pricePerWeek};
   });
   const total = weekInfos.length * pricePerWeek;
-  const discount = Math.min(c.xpBank*XP_TO_EUR, total);
+  const discount = effectiveDiscount(total, c.xpBank*XP_TO_EUR);
   const final = (total-discount).toFixed(2);
   pendingGuarderiaBooking = {weeks:weekInfos, dogIds, total, discount};
   const lostNotes = weekInfos.filter(w=>w.lost.length).map(w=>
@@ -1853,9 +1870,13 @@ function renderGuarderiaResult(){
     <button class="btn" onclick="payGuarderiaBooking()">Contratar y pagar (simulado)</button>`;
 }
 function payGuarderiaBooking(){
-  const c = activeClient();
   const b = pendingGuarderiaBooking;
   if(!b || !b.weeks.length) return;
+  startPayment('guarderia', {weekCount:b.weeks.length, dogCount:b.dogIds.length, discountCents:Math.round(b.discount*100)}, b);
+}
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago (o no hay nada que cobrar).
+function applyGuarderiaBooking(b){
+  const c = activeClient();
   let remainingDiscount = b.discount;
   b.weeks.forEach(w=>{
     const weekDiscount = Math.min(remainingDiscount, w.price);
@@ -2116,9 +2137,18 @@ function saveProfile(){
   showToast('Datos guardados', {icon:'💾'});
   renderPerfil();
 }
-function unsubscribe(){
+async function unsubscribe(){
   if(!confirm('¿Seguro que quieres darte de baja?')) return;
   const c = activeClient();
+  if(c.stripeSubscriptionId){
+    try{
+      const r = await fetch('/api/subscription', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.stripeSubscriptionId, action:'cancel'})});
+      if(!r.ok) throw new Error('cancel');
+    }catch(e){
+      showToast('No se pudo cancelar la suscripción. Inténtalo de nuevo.', {type:'warn', duration:4500});
+      return;
+    }
+  }
   c.subscriptionStatus = 'cancelled';
   saveState();
   applyAuthView();
@@ -2246,10 +2276,135 @@ function renderPaymentGate(){
 function payActivateSubscription(){
   const c = activeClient();
   if(!c) return;
+  startPayment('membership', {}, {});
+}
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago.
+function applyMembership(d, info){
+  const c = activeClient();
   c.subscriptionStatus = 'active';
+  if(info && info.subscriptionId) c.stripeSubscriptionId = info.subscriptionId;
   saveState();
   showToast('¡Pago realizado! Bienvenido a BalancedDog.', {icon:'🎉'});
   applyAuthView();
+}
+
+/* ---------------- PAGOS REALES (Stripe Checkout) ----------------
+   Flujo: la app pide a /api/checkout una página de pago de Stripe, guarda lo que se
+   estaba reservando en este móvil y redirige. Al volver (?pago=ok&session_id=...),
+   /api/verify confirma con Stripe que está pagado y solo entonces se aplica la reserva. */
+const PENDING_PAY_KEY = 'balanceddog_pending_payment_v1';
+const DONE_PAY_KEY = 'balanceddog_done_sessions_v1';
+const PAY_APPLIERS = {
+  membership: applyMembership, training: applyTrainingBooking, diy: applyDiyBooking,
+  residence: applyResidenceBooking, guarderia: applyGuarderiaBooking,
+};
+let payInFlight = false;
+window.addEventListener('pageshow', ()=>{ payInFlight = false; });
+
+// Descuento por XP en euros. Stripe no cobra menos de 0,50 €, así que si el descuento
+// dejaría un resto entre 0,01 € y 0,49 € se reduce un poco el descuento.
+function effectiveDiscount(total, xpEur){
+  let d = Math.round(Math.min(xpEur, total)*100)/100;
+  const rest = Math.round((total-d)*100)/100;
+  if(rest>0 && rest<0.5) d = Math.round((total-0.5)*100)/100;
+  return Math.max(0, d);
+}
+function newPayRef(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,10); }
+function readJsonKey(key, fallback){
+  try{ const v = JSON.parse(localStorage.getItem(key)||'null'); return v==null ? fallback : v; }catch(e){ return fallback; }
+}
+
+async function startPayment(kind, serverPayload, applyData){
+  if(payInFlight) return;
+  const c = activeClient();
+  if(!c) return;
+  payInFlight = true;
+  showToast('Preparando el pago seguro…', {icon:'🔒', duration:4000});
+  try{
+    const ref = newPayRef();
+    const payload = Object.assign({kind, ref, clientName:c.name, clientPhone:c.phone}, serverPayload);
+    const r = await fetch('/api/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const out = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(out.error || 'No se pudo iniciar el pago');
+    if(out.free){ // descuento del 100 %: no hay nada que cobrar
+      payInFlight = false;
+      PAY_APPLIERS[kind](applyData, {});
+      return;
+    }
+    if(!out.url) throw new Error('No se pudo iniciar el pago');
+    localStorage.setItem(PENDING_PAY_KEY, JSON.stringify({ref, kind, clientId:c.id, data:applyData, createdAt:Date.now()}));
+    window.location.href = out.url;
+  }catch(e){
+    payInFlight = false;
+    showToast(e.message || 'No se pudo iniciar el pago', {type:'warn', duration:4500});
+  }
+}
+
+function cleanPaymentUrl(){ try{ history.replaceState(null, '', location.pathname); }catch(e){} }
+
+async function handlePaymentReturn(){
+  const p = new URLSearchParams(location.search);
+  const status = p.get('pago');
+  if(!status) return;
+  const sid = p.get('session_id');
+  if(status==='cancelado'){
+    localStorage.removeItem(PENDING_PAY_KEY);
+    cleanPaymentUrl();
+    showToast('Pago cancelado. No se ha cobrado nada.', {type:'warn', duration:4000});
+    return;
+  }
+  const pending = readJsonKey(PENDING_PAY_KEY, null);
+  const done = readJsonKey(DONE_PAY_KEY, []);
+  if(sid && done.includes(sid)){ cleanPaymentUrl(); return; } // ya aplicado (recarga de la página)
+  if(!sid || !pending){
+    cleanPaymentUrl();
+    showToast('No se pudo confirmar el pago en este dispositivo. Si te han cobrado, avisa a tu adiestrador.', {type:'warn', duration:7000});
+    return;
+  }
+  showToast('Confirmando tu pago…', {icon:'⏳', duration:4000});
+  let v;
+  try{
+    const r = await fetch('/api/verify?session_id='+encodeURIComponent(sid));
+    v = await r.json();
+    if(!r.ok) throw new Error(v.error || 'error');
+  }catch(e){
+    // Se deja la dirección tal cual para poder recargar y reintentar.
+    showToast('No se pudo confirmar el pago ahora mismo. Recarga la página en unos segundos.', {type:'warn', duration:7000});
+    return;
+  }
+  cleanPaymentUrl();
+  const c = activeClient();
+  if(!v.paid){
+    localStorage.removeItem(PENDING_PAY_KEY);
+    showToast('El pago no se ha completado. No se ha cobrado nada.', {type:'warn', duration:5000});
+    return;
+  }
+  if(v.ref !== pending.ref || !c || c.id !== pending.clientId || !PAY_APPLIERS[pending.kind]){
+    showToast('El pago se ha realizado pero no coincide con esta sesión. Avisa a tu adiestrador.', {type:'warn', duration:8000});
+    return;
+  }
+  done.push(sid);
+  localStorage.setItem(DONE_PAY_KEY, JSON.stringify(done.slice(-50)));
+  localStorage.removeItem(PENDING_PAY_KEY);
+  PAY_APPLIERS[pending.kind](pending.data, v);
+}
+
+// Sincroniza el estado de la suscripción mensual con Stripe (renovaciones, impagos, bajas).
+async function syncSubscription(){
+  const c = activeClient();
+  if(!c || !c.stripeSubscriptionId) return;
+  try{
+    const r = await fetch('/api/subscription?id='+encodeURIComponent(c.stripeSubscriptionId));
+    if(!r.ok) return;
+    const s = await r.json();
+    const map = {active:'active', trialing:'active', past_due:'grace', unpaid:'cancelled', canceled:'cancelled', incomplete_expired:'cancelled'};
+    const next = map[s.status];
+    if(next && next!==c.subscriptionStatus){
+      c.subscriptionStatus = next;
+      saveState();
+      applyAuthView();
+    }
+  }catch(e){ /* sin conexión: se mantiene el estado actual */ }
 }
 function logout(){
   S.session = null;
@@ -2619,7 +2774,9 @@ function initIntro(){
 function boot(){
   refreshToday();
   applyAuthView();
-  initIntro();
+  // Al volver de pagar no se repite el vídeo de entrada.
+  if(/[?&]pago=/.test(location.search)) dismissIntro(); else initIntro();
+  handlePaymentReturn().finally(syncSubscription);
 }
 
 window.addEventListener('error', function(ev){
