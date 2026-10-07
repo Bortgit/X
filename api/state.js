@@ -44,15 +44,28 @@ module.exports = async (req, res) => {
       .digest('hex').slice(0, 16);
     if (since && since === stamp) return sendJson(res, 200, { unchanged: true, stamp });
 
-    const [rows, settingRows] = await Promise.all([
-      db('GET', 'clients?select=id,rev,data&order=id'),
+    const [rows, settingRows, allPays] = await Promise.all([
+      db('GET', 'clients?select=id,rev,data,guard&order=id'),
       db('GET', 'app_settings?select=key,rev,value'),
+      auth.role === 'admin' ? db('GET', 'payments?select=client_id,kind,amount_cents&status=in.(paid,applied)&kind=neq.membership') : Promise.resolve([]),
     ]);
     const settings = {};
     settingRows.forEach((s) => { settings[s.key] = { rev: s.rev, value: s.value }; });
 
     let clients;
-    if (auth.role === 'admin') clients = rows.map((r) => ({ id: r.id, rev: r.rev, data: r.data }));
+    if (auth.role === 'admin') {
+      // Aviso de control: lo reservado y pagado en la app frente a lo realmente cobrado por Stripe.
+      const paid = {};
+      allPays.forEach((p) => { paid[p.client_id] = (paid[p.client_id] || 0) + (p.amount_cents || 0) / 100; });
+      clients = rows.map((r) => {
+        const d = r.data || {};
+        const booked = ['bookingsTraining', 'bookingsResidencia', 'bookingsGuarderia']
+          .reduce((t, k) => t + (Array.isArray(d[k]) ? d[k] : []).reduce((a, b) => a + (Number(b && b.paidAmount) || 0), 0), 0);
+        const paidEur = Math.round((paid[r.id] || 0) * 100) / 100;
+        const flags = (r.guard && r.guard.flags) || [];
+        return { id: r.id, rev: r.rev, data: r.data, audit: { bookedEur: Math.round(booked * 100) / 100, paidEur, mismatch: booked > paidEur + 0.01, flags } };
+      });
+    }
     else clients = rows.map((r) => (r.id === auth.id ? { id: r.id, rev: r.rev, data: r.data } : shadowOf(r)));
 
     return sendJson(res, 200, { stamp, role: auth.role, clients, settings, payments: payRows.map((p) => ({ ref: p.ref, kind: p.kind, data: p.data, subscriptionId: p.subscription_id })) });

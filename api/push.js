@@ -6,12 +6,13 @@
 const { db, enc } = require('./_db');
 const { sendJson } = require('./_stripe');
 const { requireAuth } = require('./_auth');
+const { guardClient, loadContext } = require('./_guard');
 
 const SETTING_KEYS = ['admin', 'reading', 'extra'];
 
 function clean(data, id) {
   const d = Object.assign({}, data || {});
-  delete d.passwordSalt; delete d.passwordHash; delete d._shadow;
+  delete d.passwordSalt; delete d.passwordHash; delete d._shadow; delete d._audit;
   d.id = id;
   return d;
 }
@@ -29,9 +30,21 @@ module.exports = async (req, res) => {
       if (auth.role === 'client' && id !== auth.id) { results.push({ id, error: 'forbidden' }); continue; }
       const rev = Number(c.rev);
       if (!Number.isInteger(rev) || rev < 1) { results.push({ id, error: 'bad rev' }); continue; }
-      const upd = await db('PATCH', `clients?id=eq.${enc(id)}&rev=eq.${rev}`,
-        { data: clean(c.data, id), rev: rev + 1, updated_at: new Date().toISOString() }, 'return=representation');
-      if (upd && upd.length) { results.push({ id, ok: true, rev: upd[0].rev }); continue; }
+      let data = clean(c.data, id);
+      let patch = { rev: rev + 1, updated_at: new Date().toISOString() };
+      let corrected = false;
+      if (auth.role === 'client') {
+        // El servidor comprueba que lo guardado es posible (XP, hucha, suscripción) antes de aceptarlo.
+        const rows = await db('GET', `clients?select=rev,data,guard&id=eq.${enc(id)}`);
+        if (!rows.length) { results.push({ id, error: 'missing' }); continue; }
+        if (rows[0].rev === rev) {
+          const g = guardClient(rows[0].data || {}, data, rows[0].guard, await loadContext(id));
+          data = g.data; patch.guard = g.guard; corrected = g.corrected;
+        }
+      }
+      patch.data = data;
+      const upd = await db('PATCH', `clients?id=eq.${enc(id)}&rev=eq.${rev}`, patch, 'return=representation');
+      if (upd && upd.length) { results.push(corrected ? { id, ok: true, rev: upd[0].rev, corrected: true, data: upd[0].data } : { id, ok: true, rev: upd[0].rev }); continue; }
       const cur = await db('GET', `clients?select=id,rev,data&id=eq.${enc(id)}`);
       results.push(cur.length ? { id, conflict: true, current: { rev: cur[0].rev, data: cur[0].data } } : { id, error: 'missing' });
     }

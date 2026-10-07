@@ -1181,7 +1181,7 @@ function canon(v){
 const snapshot = v => JSON.parse(JSON.stringify(v));
 function clientData(c){
   const d = snapshot(c);
-  delete d.passwordSalt; delete d.passwordHash; delete d._shadow;
+  delete d.passwordSalt; delete d.passwordHash; delete d._shadow; delete d._audit;
   return d;
 }
 function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
@@ -1278,7 +1278,13 @@ async function pushNow(){
       let conflict = false;
       out.results.forEach(x=>{
         if(x.ok){
-          if(x.id){ const sent = body.clients.find(c=>c.id===x.id); syncBase.clients[x.id] = {rev:x.rev, data:sent.data}; }
+          if(x.id && x.corrected && x.data){
+            // El servidor corrigió algo que no era posible (XP, hucha, suscripción): se usa su versión.
+            const i = S.clients.findIndex(c=>c.id===x.id);
+            if(i>=0) S.clients[i] = Object.assign(makeClient({}), x.data);
+            syncBase.clients[x.id] = {rev:x.rev, data:snapshot(x.data)};
+          }
+          else if(x.id){ const sent = body.clients.find(c=>c.id===x.id); syncBase.clients[x.id] = {rev:x.rev, data:sent.data}; }
           else { const sent = body.settings.find(s=>s.key===x.key); syncBase.settings[x.key] = {rev:x.rev, value:sent.value}; }
         }else if(x.conflict){
           conflict = true;
@@ -1317,7 +1323,9 @@ function applyServer(view){
     let data = sc.data;
     if(local && b && canon(clientData(local))!==canon(b.data)) data = merge3(b.data, clientData(local), sc.data);
     syncBase.clients[sc.id] = {rev:sc.rev, data:snapshot(sc.data)};
-    next.push(Object.assign(makeClient({}), data));
+    const full = Object.assign(makeClient({}), data);
+    if(sc.audit) full._audit = sc.audit; // avisos de control, solo para el admin
+    next.push(full);
   });
   S.clients = next;
   Object.keys(view.settings||{}).forEach(key=>{
@@ -2846,13 +2854,22 @@ function renderAdminStats(){
   document.getElementById('statActive').textContent = active;
   document.getElementById('statCancelled').textContent = cancelled;
 }
+function adminAuditNote(c){
+  const a = c._audit;
+  if(!a) return '';
+  const msgs = [];
+  if(a.mismatch) msgs.push(`Reservas por ${a.bookedEur}€ pero cobrado ${a.paidEur}€`);
+  (a.flags||[]).slice(-2).forEach(f=>msgs.push(f.msg));
+  return msgs.length ? `<div class="meta" style="color:#b3402a;">⚠ ${msgs.map(escapeHtml).join(' · ')}</div>` : '';
+}
 function renderAdminClients(){
   document.getElementById('adminClientList').innerHTML = S.clients.map(c=>{
     const map = {active:'Activa', pending:'Pendiente', grace:'2 días gracia', cancelled:'Baja'};
     const dogNames = c.dogs.map(d=>d.name).join(', ');
     return `<div class="client-card" onclick="openClientModal('${c.id}')">
       <div><div class="nm">${escapeHtml(c.name)} · 🐶 ${escapeHtml(dogNames)}</div>
-      <div class="meta">XP mensual: ${c.xpMonthly} · Hucha: ${c.xpBank} · ${map[c.subscriptionStatus]}</div></div>
+      <div class="meta">XP mensual: ${c.xpMonthly} · Hucha: ${c.xpBank} · ${map[c.subscriptionStatus]}</div>
+      ${adminAuditNote(c)}</div>
       <div>➜</div>
     </div>`;
   }).join('');

@@ -6,10 +6,16 @@ const { signToken, hashPassword, checkPassword, adminPasswordOk, normPhone, slee
 
 const ID_RE = /^[A-Za-z0-9_-]{3,64}$/;
 
+// Una cuenta nueva siempre empieza vacía: sin XP, sin reservas y pendiente de pago.
 function stripSecrets(c) {
   const d = Object.assign({}, c);
   delete d.passwordSalt;
   delete d.passwordHash;
+  delete d.stripeSubscriptionId;
+  d.subscriptionStatus = 'pending';
+  d.xpMonthly = 0; d.xpBank = 0; d.streak = Math.min(Number(d.streak) || 0, 1);
+  d.lecturaClaimedIds = [];
+  d.bookingsTraining = []; d.bookingsResidencia = []; d.bookingsGuarderia = [];
   return d;
 }
 
