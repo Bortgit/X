@@ -1340,6 +1340,7 @@ async function pull(force){
   applyServer(view);
   syncBase.stamp = view.stamp;
   saveBase(); localSave();
+  if(view.payments && view.payments.length) setTimeout(()=>reconcilePayments(view.payments), 0);
   return true;
 }
 function afterPull(){
@@ -2574,7 +2575,7 @@ async function startPayment(kind, serverPayload, applyData){
   showToast('Preparando el pago seguro…', {icon:'🔒', duration:4000});
   try{
     const ref = newPayRef();
-    const payload = Object.assign({kind, ref}, serverPayload);
+    const payload = Object.assign({kind, ref, applyData}, serverPayload);
     const r = await authFetch('/api/checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
     const out = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(out.error || 'No se pudo iniciar el pago');
@@ -2608,7 +2609,7 @@ async function handlePaymentReturn(){
   const pending = readJsonKey(PENDING_PAY_KEY, null);
   const done = readJsonKey(DONE_PAY_KEY, []);
   if(sid && done.includes(sid)){ cleanPaymentUrl(); return; } // ya aplicado (recarga de la página)
-  if(!sid || !pending){
+  if(!sid){
     cleanPaymentUrl();
     showToast('No se pudo confirmar el pago en este dispositivo. Si te han cobrado, avisa a tu adiestrador.', {type:'warn', duration:7000});
     return;
@@ -2631,15 +2632,38 @@ async function handlePaymentReturn(){
     showToast('El pago no se ha completado. No se ha cobrado nada.', {type:'warn', duration:5000});
     return;
   }
-  if(v.ref !== pending.ref || !c || c.id !== pending.clientId || !PAY_APPLIERS[pending.kind]){
+  if(v.applied){ localStorage.removeItem(PENDING_PAY_KEY); return; } // ya aplicado (p. ej. desde otro dispositivo)
+  const kind = v.kind || (pending && pending.kind);
+  if(!c || !PAY_APPLIERS[kind] || (pending && (v.ref !== pending.ref || c.id !== pending.clientId))){
     showToast('El pago se ha realizado pero no coincide con esta sesión. Avisa a tu adiestrador.', {type:'warn', duration:8000});
     return;
   }
   done.push(sid);
   localStorage.setItem(DONE_PAY_KEY, JSON.stringify(done.slice(-50)));
   localStorage.removeItem(PENDING_PAY_KEY);
-  PAY_APPLIERS[pending.kind](pending.data, v);
-  await pushNow();
+  // Los datos de la compra vienen del servidor (así sirve aunque este móvil haya perdido lo guardado).
+  await reconcilePayments([{ref:v.ref, kind, data:v.data || (pending && pending.data) || {}, subscriptionId:v.subscriptionId}]);
+}
+
+// Aplica los pagos que Stripe ya confirmó y la app aún no había aplicado (p. ej. si el cliente
+// cerró la app antes de volver de pagar). Cada pago se aplica una sola vez.
+let reconciling = false;
+async function reconcilePayments(list){
+  if(reconciling || !list || !list.length) return;
+  reconciling = true;
+  try{
+    for(const p of list){
+      if(!p.ref || !PAY_APPLIERS[p.kind] || !activeClient()) continue;
+      const done = readJsonKey(DONE_PAY_KEY, []);
+      if(!done.includes(p.ref)){
+        done.push(p.ref);
+        localStorage.setItem(DONE_PAY_KEY, JSON.stringify(done.slice(-50)));
+        PAY_APPLIERS[p.kind](p.data || {}, {subscriptionId:p.subscriptionId});
+      }
+      try{ await api('/api/payments', 'POST', {ref:p.ref}); }catch(e){ /* se avisará en la próxima carga */ }
+    }
+    await pushNow();
+  }finally{ reconciling = false; }
 }
 
 // Sincroniza el estado de la suscripción mensual con Stripe (renovaciones, impagos, bajas).

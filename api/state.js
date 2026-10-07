@@ -30,13 +30,17 @@ module.exports = async (req, res) => {
     const url = new URL(req.url, 'https://x.invalid');
     const since = url.searchParams.get('stamp');
 
-    const [revs, setRevs] = await Promise.all([
+    const [revs, setRevs, payRows] = await Promise.all([
       db('GET', 'clients?select=id,rev&order=id'),
       db('GET', 'app_settings?select=key,rev&order=key'),
+      // pagos confirmados por Stripe que la app de este cliente aún no ha aplicado
+      auth.role === 'client'
+        ? db('GET', `payments?select=ref,kind,data,subscription_id&client_id=eq.${enc(auth.id)}&status=eq.paid&order=created_at`)
+        : Promise.resolve([]),
     ]);
     if (auth.role === 'client' && !revs.some((r) => r.id === auth.id)) return sendJson(res, 401, { error: 'La cuenta ya no existe.' });
     const stamp = crypto.createHash('sha1')
-      .update(revs.map((r) => r.id + ':' + r.rev).join(',') + '|' + setRevs.map((r) => r.key + ':' + r.rev).join(','))
+      .update(revs.map((r) => r.id + ':' + r.rev).join(',') + '|' + setRevs.map((r) => r.key + ':' + r.rev).join(',') + '|' + payRows.map((p) => p.ref).join(','))
       .digest('hex').slice(0, 16);
     if (since && since === stamp) return sendJson(res, 200, { unchanged: true, stamp });
 
@@ -51,7 +55,7 @@ module.exports = async (req, res) => {
     if (auth.role === 'admin') clients = rows.map((r) => ({ id: r.id, rev: r.rev, data: r.data }));
     else clients = rows.map((r) => (r.id === auth.id ? { id: r.id, rev: r.rev, data: r.data } : shadowOf(r)));
 
-    return sendJson(res, 200, { stamp, role: auth.role, clients, settings });
+    return sendJson(res, 200, { stamp, role: auth.role, clients, settings, payments: payRows.map((p) => ({ ref: p.ref, kind: p.kind, data: p.data, subscriptionId: p.subscription_id })) });
   } catch (e) {
     return sendJson(res, 500, { error: e.message || 'No se pudo leer el estado' });
   }

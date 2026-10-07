@@ -3,6 +3,7 @@
 
 const { stripe, sendJson } = require('./_stripe');
 const { requireAuth } = require('./_auth');
+const { markPaidFromSession, getPayment } = require('./_payments');
 
 const SESSION_RE = /^cs_(live|test)_[A-Za-z0-9]{10,200}$/;
 
@@ -18,7 +19,14 @@ module.exports = async (req, res) => {
     const s = await stripe('GET', '/checkout/sessions/' + id);
     if (auth.role === 'client' && (!s.metadata || s.metadata.client_id !== auth.id)) throw new Error('Este pago no pertenece a tu cuenta');
     const paid = s.payment_status === 'paid';
+    let pay = null;
+    if (paid) {
+      await markPaidFromSession(s);
+      pay = s.client_reference_id ? await getPayment(s.client_reference_id) : null;
+    }
     return sendJson(res, 200, {
+      data: pay ? pay.data : null,
+      applied: !!(pay && pay.status === 'applied'),
       paid,
       ref: s.client_reference_id || null,
       kind: (s.metadata && s.metadata.kind) || null,

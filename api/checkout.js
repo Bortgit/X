@@ -5,6 +5,8 @@ const { stripe, originFor, sendJson } = require('./_stripe');
 const { db, enc } = require('./_db');
 const { requireAuth } = require('./_auth');
 
+const MAX_DATA_BYTES = 20000;
+
 const MEMBERSHIP_CENTS = 800; // 8 €/mes
 const RESID_FIRST_DOG = 2000; // 20 €/noche
 const RESID_SECOND_DOG = 1000; // 10 €/noche (si van juntos)
@@ -122,6 +124,12 @@ module.exports = async (req, res) => {
         ? { subscription_data: { description, metadata } }
         : { payment_intent_data: { description, metadata } }),
     });
+
+    // Se guarda en el servidor qué se estaba comprando, para poder aplicarlo aunque
+    // el cliente cierre la app antes de volver de Stripe.
+    let data = body.applyData && typeof body.applyData === 'object' ? body.applyData : {};
+    if (JSON.stringify(data).length > MAX_DATA_BYTES) data = {};
+    await db('POST', 'payments', [{ ref: body.ref, client_id: auth.id, kind: body.kind, data, session_id: session.id, status: 'created' }], 'return=minimal');
 
     return sendJson(res, 200, { url: session.url });
   } catch (e) {
