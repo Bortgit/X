@@ -367,12 +367,17 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 #introOverlay{position:fixed;inset:0;background:#fff;z-index:999;display:flex;align-items:center;justify-content:center;}
 #introOverlay.hidden{display:none;}
 #introVideo{width:100%;height:100%;object-fit:contain;}
+#introTap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#introTap.hidden{display:none;}
+#introTap span{font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--text);letter-spacing:.3px;padding:14px 26px;border-bottom:4px solid #E39A38;animation:introPulse 1.6s ease-in-out infinite;}
+@keyframes introPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.96);}}
 </style>
 </head>
 <body>
 
 <div id="introOverlay">
-  <video id="introVideo" src="assets/intro.mp4?v=5" autoplay muted playsinline></video>
+  <video id="introVideo" src="assets/intro.mp4?v=5" playsinline preload="auto"></video>
+  <div id="introTap"><span>Toca para empezar</span></div>
 </div>
 
 <div class="app-wrap">
@@ -3195,12 +3200,16 @@ function dismissIntro(){
 }
 function initIntro(){
   const v = document.getElementById('introVideo');
+  const tap = document.getElementById('introTap');
   v.addEventListener('ended', dismissIntro);
   v.addEventListener('error', dismissIntro);
-  setTimeout(dismissIntro, 8000); // salvaguarda si el autoplay queda bloqueado o el vídeo no carga
-  // Intenta con sonido (el audio va sincronizado con las burbujas); si el navegador lo bloquea, sigue sin sonido.
-  v.muted = false;
-  v.play().catch(()=>{ v.muted = true; v.play().catch(dismissIntro); });
+  // El navegador solo deja reproducir con sonido tras un toque: la entradilla arranca al tocar.
+  tap.addEventListener('click', ()=>{
+    tap.classList.add('hidden');
+    setTimeout(dismissIntro, 9000); // salvaguarda por si el vídeo se queda parado
+    v.muted = false;
+    v.play().catch(()=>{ v.muted = true; v.play().catch(dismissIntro); });
+  }, {once:true});
 }
 function boot(){
   if(ADMIN_MODE){ dismissIntroNow(); }
