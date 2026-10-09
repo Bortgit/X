@@ -57,6 +57,7 @@ s = rep(s, 'let cfg=structuredClone(DEFAULT_CFG), sessions=[], db=null, dl=null,
         'let cfg=structuredClone(DEFAULT_CFG), sessions=[], dbState="ok";')
 s = rep(s, '''<p class="small muted">Los datos se guardan en la base de datos de esta app. Exporta de vez en cuando: el CSV sigue el formato de la hoja HISTORIAL del Excel.</p>''',
         '''<p class="small muted">Tus datos se guardan en este iPhone (no en internet). Haz una copia cada semana y guárdala en Archivos o iCloud: si borras la app o cambias de teléfono, «Importar copia» lo recupera todo. El CSV sigue el formato de la hoja HISTORIAL del Excel.</p>''')
+s = rep(s, '''async function wipeRemote(ids){if(!db)return;for(const id of ids){try{await db.doc("sesiones/"+id).delete()}catch(e){}}}''', '''async function wipeRemote(ids){}''')
 assert "db." not in re.sub(r"//.*", "", s.split("<script>")[1]), "quedan llamadas a db"
 
 # ---------------- documento completo con modo app

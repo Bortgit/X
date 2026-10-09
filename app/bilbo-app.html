@@ -83,8 +83,10 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .savebar{margin-top:16px}
 .savebar .btn{width:100%;font-size:18px;min-height:52px}
 .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:10}
-.tabbar .in{display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:600px}
-.tabbar button{border:0;background:none;color:var(--muted);font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;padding:14px 4px;cursor:pointer}
+.tabbar .in{display:grid;grid-template-columns:repeat(5,1fr);width:100%;max-width:600px}
+.tabbar button{border:0;background:none;color:var(--muted);font:600 13px var(--display);letter-spacing:.03em;text-transform:uppercase;padding:14px 2px;cursor:pointer}
+.tabbar button#t-reset{color:var(--bad)}
+.btn.dangerfill{background:var(--bad);border-color:var(--bad);color:#fff}
 .tabbar button[aria-current="page"]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
 .timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(58px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:999px;padding:8px 8px 8px 16px;display:flex;gap:12px;align-items:center;z-index:11;font:700 22px var(--display);font-variant-numeric:tabular-nums;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .timer button{border:0;background:var(--bg);color:var(--ink);border-radius:999px;padding:6px 12px;font:600 14px var(--body);cursor:pointer}
@@ -119,6 +121,7 @@ textarea{width:100%;font:16px var(--body);background:var(--surface2);color:var(-
   <button id="t-prog" data-tab="prog">Progreso</button>
   <button id="t-hist" data-tab="hist">Historial</button>
   <button id="t-aj" data-tab="aj">Ajustes</button>
+  <button id="t-reset" data-tab="reset">Reset</button>
 </div></nav>
 <div id="timer" class="timer" hidden></div>
 <div id="toast" class="toast" hidden></div>
@@ -475,6 +478,30 @@ async function saveEdit(){
   editBuf=null;await writeSession(upd);render();toast("Sesión corregida. Cargas recalculadas.");
 }
 
+/* ======================= RESET ======================= */
+let resetArmed=false;
+function renderReset(){
+  let h=`<header class="top"><div><div class="label">Empezar de cero</div><h1>Reset</h1></div></header>`;
+  h+=`<section class="card"><h2>Volver al día uno</h2><p class="small" style="margin-top:8px">Borra todas tus sesiones, ciclos y récords. La app vuelve al estado inicial: el primer día de cada ejercicio pondrás tú el peso y las repeticiones de partida, y desde ahí se aplica de nuevo toda la lógica.</p>
+  <p class="small muted">Se mantienen los ajustes de material (barra, incrementos, tope del jalón). Hay ${sessions.length} ${sessions.length===1?"sesión guardada":"sesiones guardadas"}.</p>`;
+  if(!resetArmed){
+    h+=`<div class="row" style="margin-top:12px"><button class="btn dangerfill" id="reset-ask">Resetear</button></div>`;
+  }else{
+    h+=`<div class="banner warn" style="margin-top:12px"><b>¿Seguro que quieres borrar todo?</b> No se puede deshacer. Si quieres conservar tus datos, haz antes una copia.</div>
+    <div class="row"><button class="btn dangerfill" id="reset-yes">Sí, borrar todo</button><button class="btn" id="reset-no">Cancelar</button><button class="btn" id="exp-json">Hacer copia antes</button></div>`;
+  }
+  return h+`</section>`;
+}
+async function wipeRemote(ids){if(!db)return;for(const id of ids){try{await db.doc("sesiones/"+id).delete()}catch(e){}}}
+async function resetAll(){
+  const ids=sessions.map(s=>s.id);
+  sessions=[];LS.set("bilbo.sessions",sessions);
+  draft={date:todayISO(),v:{}};saveDraft();unlocked={};editBuf=null;resetArmed=false;
+  await wipeRemote(ids);
+  day=defaultDay();tab="hoy";try{localStorage.setItem("bilbo.tab",tab)}catch(_){}
+  render();window.scrollTo(0,0);toast("Datos borrados. Empiezas desde el día uno.");
+}
+
 /* ======================= AJUSTES ======================= */
 function renderAj(){
   let h=`<header class="top"><div><div class="label">Material y copias</div><h1>Ajustes</h1></div></header>`+dbBanner();
@@ -560,12 +587,15 @@ function beep(){if(!actx)return;try{const o=actx.createOscillator(),g=actx.creat
 function render(){
   renderPending=false;
   const app=$("#app");
-  app.innerHTML=tab==="hoy"?renderHoy():tab==="prog"?renderProg():tab==="hist"?renderHist():renderAj();
+  app.innerHTML=tab==="hoy"?renderHoy():tab==="prog"?renderProg():tab==="hist"?renderHist():tab==="reset"?renderReset():renderAj();
   document.querySelectorAll(".tabbar button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===tab?"page":"false"));
 }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,label");if(!t)return;
-  if(t.dataset.tab){tab=t.dataset.tab;editBuf=null;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
+  if(t.id==="reset-ask"){resetArmed=true;render();return}
+  if(t.id==="reset-no"){resetArmed=false;render();return}
+  if(t.id==="reset-yes"){t.disabled=true;await resetAll();return}
+  if(t.dataset.tab){tab=t.dataset.tab;editBuf=null;resetArmed=false;try{localStorage.setItem("bilbo.tab",tab)}catch(_){}render();window.scrollTo(0,0);return}
   if(t.dataset.unlock){const ex=t.dataset.unlock;unlocked[ex]=!unlocked[ex];render();return}
   if(t.dataset.seg){const k=t.dataset.seg,f=t.dataset.f;draft.v[k]=draft.v[k]||{};draft.v[k][f]=isNaN(+t.dataset.v)?t.dataset.v:+t.dataset.v;saveDraft();
     t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));return}
