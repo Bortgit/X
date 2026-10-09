@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     const id = String(body.id || '');
     if (!id) return sendJson(res, 400, { error: 'Falta la cuenta' });
     const password = tempPassword();
-    const upd = await db('PATCH', `clients?id=eq.${enc(id)}`, { pass_hash: await hashPassword(password) }, 'return=representation');
+    const upd = await db('PATCH', `clients?id=eq.${enc(id)}`, { pass_hash: await hashPassword(password), must_change: true }, 'return=representation');
     if (!upd || !upd.length) return sendJson(res, 404, { error: 'La cuenta no existe' });
     return sendJson(res, 200, { ok: true, password });
   } catch (e) {

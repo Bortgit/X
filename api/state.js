@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     const since = url.searchParams.get('stamp');
 
     const [revs, setRevs, payRows] = await Promise.all([
-      db('GET', 'clients?select=id,rev&order=id'),
+      db('GET', 'clients?select=id,rev,must_change&order=id'),
       db('GET', 'app_settings?select=key,rev&order=key'),
       // pagos confirmados por Stripe que la app de este cliente aún no ha aplicado
       auth.role === 'client'
@@ -68,7 +68,8 @@ module.exports = async (req, res) => {
     }
     else clients = rows.map((r) => (r.id === auth.id ? { id: r.id, rev: r.rev, data: r.data } : shadowOf(r)));
 
-    return sendJson(res, 200, { stamp, role: auth.role, clients, settings, payments: payRows.map((p) => ({ ref: p.ref, kind: p.kind, data: p.data, subscriptionId: p.subscription_id })) });
+    const mustChange = auth.role === 'client' && !!(revs.find((r) => r.id === auth.id) || {}).must_change;
+    return sendJson(res, 200, { stamp, role: auth.role, mustChange, clients, settings, payments: payRows.map((p) => ({ ref: p.ref, kind: p.kind, data: p.data, subscriptionId: p.subscription_id })) });
   } catch (e) {
     return sendJson(res, 500, { error: e.message || 'No se pudo leer el estado' });
   }

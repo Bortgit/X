@@ -61,7 +61,13 @@ function adminPasswordOk(pw) {
   const got = crypto.createHash('sha256').update(String(pw)).digest('hex');
   return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
 }
+const PASSWORD_RULES = 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.';
+// Devuelve null si la contraseña es válida, o el texto del problema.
+function passwordProblem(pw) {
+  const p = String(pw || '');
+  return p.length >= 8 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p) ? null : PASSWORD_RULES;
+}
 const normPhone = (p) => String(p || '').replace(/\s+/g, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-module.exports = { signToken, readToken, requireAuth, hashPassword, checkPassword, adminPasswordOk, normPhone, sleep };
+module.exports = { passwordProblem, signToken, readToken, requireAuth, hashPassword, checkPassword, adminPasswordOk, normPhone, sleep };

@@ -423,7 +423,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
             <div class="field"><label>Nombre y apellidos</label><input id="obName" placeholder="Ej. Laura Gómez"></div>
             <div class="field"><label>Teléfono (será tu usuario para entrar)</label><input id="obPhone" placeholder="Ej. 600 111 222"></div>
             <div class="field"><label>Dirección</label><input id="obAddress" placeholder="Calle, número, ciudad"></div>
-            <div class="field"><label>Contraseña</label><input type="password" id="obPassword" placeholder="Mínimo 6 caracteres"></div>
+            <div class="field"><label>Contraseña</label><input type="password" id="obPassword" placeholder="8+ caracteres, mayúscula, minúscula y número"></div>
             <div class="field"><label>Repite la contraseña</label><input type="password" id="obPassword2"></div>
             <hr class="sep">
             <div class="field"><label>Nombre del perro</label><input id="obDogName" placeholder="Ej. Toby"></div>
@@ -664,7 +664,8 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           <div class="card" style="margin-top:14px;">
             <div class="card-title" style="font-size:13px;">Cambiar contraseña</div>
             <div class="field"><label>Contraseña actual</label><input type="password" id="pwCurrent" autocomplete="current-password"></div>
-            <div class="field"><label>Contraseña nueva</label><input type="password" id="pwNew" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+            <div class="field"><label>Contraseña nueva</label><input type="password" id="pwNew" placeholder="8+ caracteres, mayúscula, minúscula y número" autocomplete="new-password"></div>
+            <div class="field"><label>Repite la contraseña nueva</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
             <p class="form-error" id="pwError"></p>
             <button class="btn btn-outline btn-sm" onclick="changePassword()">Cambiar contraseña</button>
           </div>
@@ -762,6 +763,17 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="pwForceOverlay" style="z-index:900;">
+  <div class="modal-box">
+    <h3>Crea tu contraseña</h3>
+    <p class="card-sub">Has entrado con una contraseña temporal. Crea una nueva para seguir.</p>
+    <div class="field"><label>Contraseña nueva</label><input type="password" id="pwForceNew" placeholder="8+ caracteres, mayúscula, minúscula y número" autocomplete="new-password"></div>
+    <div class="field"><label>Repite la contraseña nueva</label><input type="password" id="pwForceNew2" autocomplete="new-password"></div>
+    <p class="form-error" id="pwForceError"></p>
+    <button class="btn" onclick="submitForcePw()">Guardar contraseña</button>
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="showForcePw(false);logout()">Cerrar sesión</button>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="clientModal">
   <div class="modal-box" id="clientModalBody"></div>
 </div>
@@ -1381,6 +1393,7 @@ async function pull(force){
   if(view.unchanged) return false;
   if(pushing || !S.session) return false; // mientras se envía algo no se mezcla
   applyServer(view);
+  if(S.session.role==='client' && 'mustChange' in view) showForcePw(!!view.mustChange);
   syncBase.stamp = view.stamp;
   saveBase(); localSave();
   if(view.payments && view.payments.length) setTimeout(()=>reconcilePayments(view.payments), 0);
@@ -2500,7 +2513,8 @@ async function submitSignupData(){
   const errBox = document.getElementById('signupError');
   errBox.textContent = '';
   if(!name || !phone || !dogName){ errBox.textContent = 'Completa al menos tu nombre, tu teléfono y el nombre de tu perro.'; return; }
-  if(password.length < 6){ errBox.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+  const pwBad = pwProblem(password);
+  if(pwBad){ errBox.textContent = pwBad; return; }
   if(password !== password2){ errBox.textContent = 'Las contraseñas no coinciden.'; return; }
   const dog = makeDog({
     name: dogName,
@@ -2530,6 +2544,7 @@ function renderClientLoginScreen(){
   document.getElementById('loginPassword').value='';
   document.getElementById('loginError').textContent='';
 }
+let forcePwPending = false;
 async function submitClientLogin(){
   const phone = document.getElementById('loginPhone').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -2541,8 +2556,10 @@ async function submitClientLogin(){
     await startSyncedSession({role:'client', clientId:r.id});
     if(!activeClient()) throw new Error('No se pudieron cargar tus datos. Inténtalo de nuevo.');
     localSave();
+    forcePwPending = !!r.mustChange;
   }catch(e){ setToken(null); errBox.textContent = e.message; return; }
   applyAuthView();
+  showForcePw(forcePwPending);
 }
 function renderAdminLoginScreen(){
   document.getElementById('adminLoginPassword').value='';
@@ -2736,6 +2753,7 @@ function applyAuthView(){
   const clientWrap = document.getElementById('clientAppWrap');
   const adminWrap = document.getElementById('adminApp');
   if(!S.session){
+    showForcePw(false);
     authWrap.classList.remove('hidden');
     clientWrap.classList.add('hidden');
     adminWrap.classList.add('hidden');
@@ -2988,6 +3006,32 @@ function openClientModal(id){
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
 }
+const PW_RULES_TEXT = 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.';
+function pwProblem(pw){
+  pw = String(pw||'');
+  return pw.length>=8 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) ? null : PW_RULES_TEXT;
+}
+// Tras entrar con una contraseña temporal del admin, hay que crear una propia antes de seguir.
+function showForcePw(on){
+  const box = document.getElementById('pwForceOverlay');
+  if(!box) return;
+  box.classList.toggle('hidden', !on);
+  if(on){ document.getElementById('pwForceError').textContent=''; }
+}
+async function submitForcePw(){
+  const err = document.getElementById('pwForceError');
+  err.textContent = '';
+  const a = document.getElementById('pwForceNew').value, b = document.getElementById('pwForceNew2').value;
+  const bad = pwProblem(a);
+  if(bad){ err.textContent = bad; return; }
+  if(a!==b){ err.textContent = 'Las contraseñas no coinciden.'; return; }
+  try{
+    await api('/api/change-password', 'POST', {forced:true, next:a});
+    document.getElementById('pwForceNew').value = ''; document.getElementById('pwForceNew2').value = '';
+    showForcePw(false);
+    showToast('Contraseña creada. ¡Listo!');
+  }catch(e){ err.textContent = e.message || 'No se pudo guardar la contraseña.'; }
+}
 async function adminResetPassword(clientId){
   const c = S.clients.find(x=>x.id===clientId);
   if(!c) return;
@@ -3000,12 +3044,14 @@ async function adminResetPassword(clientId){
 async function changePassword(){
   const err = document.getElementById('pwError');
   err.textContent = '';
-  const cur = document.getElementById('pwCurrent').value, nxt = document.getElementById('pwNew').value;
+  const cur = document.getElementById('pwCurrent').value, nxt = document.getElementById('pwNew').value, nxt2 = document.getElementById('pwNew2').value;
   if(!cur){ err.textContent = 'Escribe tu contraseña actual.'; return; }
-  if(nxt.length<6){ err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; return; }
+  const bad = pwProblem(nxt);
+  if(bad){ err.textContent = bad; return; }
+  if(nxt!==nxt2){ err.textContent = 'Las contraseñas nuevas no coinciden.'; return; }
   try{
     await api('/api/change-password', 'POST', {current:cur, next:nxt});
-    document.getElementById('pwCurrent').value = ''; document.getElementById('pwNew').value = '';
+    document.getElementById('pwCurrent').value = ''; document.getElementById('pwNew').value = ''; document.getElementById('pwNew2').value = '';
     showToast('Contraseña cambiada.');
   }catch(e){ err.textContent = e.message || 'No se pudo cambiar la contraseña.'; }
 }
