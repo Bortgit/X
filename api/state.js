@@ -10,7 +10,7 @@ const { requireAuth } = require('./_auth');
 
 function shadowOf(row) {
   const d = row.data || {};
-  const strip = (arr) => (Array.isArray(arr) ? arr : []).map((b) => { const x = Object.assign({}, b); delete x.paidAmount; return x; });
+  const strip = (arr) => (Array.isArray(arr) ? arr : []).map((b) => { const x = Object.assign({}, b); delete x.paidAmount; delete x.stripeSubscriptionId; return x; });
   return {
     id: row.id, rev: row.rev,
     data: {

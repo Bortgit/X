@@ -81,14 +81,15 @@ module.exports = async (req, res) => {
     // El descuento por XP lo calcula la app (los XP viven en el móvil del cliente);
     // aquí solo se limita para que nunca sea negativo ni supere el precio.
     let discount = Math.round(Number(body.discountCents) || 0);
-    if (body.kind === 'membership') discount = 0;
+    // La membresía y el DIY son suscripciones con precio fijo: nunca llevan descuento.
+    if (body.kind === 'membership' || body.kind === 'diy') discount = 0;
     discount = Math.max(0, Math.min(discount, baseCents));
     const finalCents = baseCents - discount;
 
     if (finalCents === 0) return sendJson(res, 200, { free: true });
     if (finalCents < 50) throw new Error('El importe mínimo de cobro es 0,50 €');
 
-    const isSub = body.kind === 'membership';
+    const isSub = body.kind === 'membership' || body.kind === 'diy';
     const origin = originFor(req);
 
     // Datos del cliente solo para que tú los veas en el panel de Stripe y puedas

@@ -19,14 +19,18 @@ module.exports = async (req, res) => {
     const rows = await db('GET', `clients?select=id,data&id=eq.${enc(id)}`);
     if (!rows.length) return sendJson(res, 200, { ok: true, already: true });
 
+    // Suscripción de la app + las de DIY (una por perro apuntado). Todas se cancelan antes de borrar.
+    const d = rows[0].data || {};
+    const ids = [d.stripeSubscriptionId]
+      .concat((Array.isArray(d.bookingsTraining) ? d.bookingsTraining : []).map((b) => b && b.stripeSubscriptionId))
+      .filter((x, i, a) => x && SUB_RE.test(x) && a.indexOf(x) === i);
     let cancelled = false;
-    const sub = rows[0].data && rows[0].data.stripeSubscriptionId;
-    if (sub && SUB_RE.test(sub)) {
+    for (const sub of ids) {
       try { await stripe('DELETE', '/subscriptions/' + sub); cancelled = true; }
       catch (e) {
         // Si Stripe dice que ya no existe o ya estaba cancelada, seguimos; cualquier otro fallo detiene el borrado.
         if (!/no such subscription|already been canceled|resource_missing/i.test(e.message || '')) {
-          return sendJson(res, 502, { error: 'No se pudo cancelar la suscripción en Stripe; la cuenta NO se ha eliminado. ' + (e.message || '') });
+          return sendJson(res, 502, { error: 'No se pudo cancelar una suscripción en Stripe; la cuenta NO se ha eliminado. ' + (e.message || '') });
         }
       }
     }
