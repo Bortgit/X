@@ -376,7 +376,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 <body>
 
 <div id="introOverlay">
-  <video id="introVideo" src="assets/intro.mp4?v=5" playsinline preload="auto"></video>
+  <video id="introVideo" src="assets/intro.mp4?v=6" muted playsinline preload="auto"></video>
   <div id="introTap"><span>Toca para empezar</span></div>
 </div>
 
@@ -3192,23 +3192,40 @@ const RENDERERS = {
 };
 
 function dismissIntroNow(){ const o = document.getElementById('introOverlay'); if(o) o.classList.add('hidden'); }
+let introCtx = null;
 function dismissIntro(){
   const overlay = document.getElementById('introOverlay');
   if(!overlay || overlay.classList.contains('hidden')) return;
   overlay.classList.add('hidden');
-  document.getElementById('introVideo').pause();
+  const v = document.getElementById('introVideo');
+  // Se libera el vídeo y el audio para que el móvil no deje un reproductor en la pantalla de bloqueo.
+  try{ v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }catch(e){}
+  try{ if(introCtx){ introCtx.close(); introCtx = null; } }catch(e){}
 }
 function initIntro(){
   const v = document.getElementById('introVideo');
   const tap = document.getElementById('introTap');
   v.addEventListener('ended', dismissIntro);
   v.addEventListener('error', dismissIntro);
-  // El navegador solo deja reproducir con sonido tras un toque: la entradilla arranca al tocar.
+  // El vídeo va mudo y sin pista de audio; el sonido se reproduce aparte con Web Audio
+  // (no abre el reproductor del sistema). Se necesita un toque para que el navegador permita el sonido.
+  const audioData = fetch('assets/intro-audio.m4a?v=6').then(r=>r.arrayBuffer()).catch(()=>null);
   tap.addEventListener('click', ()=>{
     tap.classList.add('hidden');
     setTimeout(dismissIntro, 9000); // salvaguarda por si el vídeo se queda parado
-    v.muted = false;
-    v.play().catch(()=>{ v.muted = true; v.play().catch(dismissIntro); });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx = null;
+    try{ if(AC){ ctx = new AC(); introCtx = ctx; ctx.resume(); } }catch(e){ ctx = null; }
+    const playVideo = ()=> v.play().catch(dismissIntro);
+    if(!ctx){ playVideo(); return; }
+    audioData.then(ab=>{
+      if(!ab) throw new Error('sin audio');
+      return new Promise((res,rej)=>{ const r = ctx.decodeAudioData(ab.slice(0), res, rej); if(r && r.then) r.then(res, rej); });
+    }).then(buf=>{
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination);
+      return v.play().then(()=>{ src.start(0); });
+    }).catch(()=>{ playVideo(); });
   }, {once:true});
 }
 function boot(){
