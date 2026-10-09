@@ -364,9 +364,9 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 .admin-login-link{display:block;text-align:center;margin-top:28px;font-size:12px;color:var(--text-soft);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:inherit;}
 
 /* ---------- intro overlay ---------- */
-#introOverlay{position:fixed;inset:0;background:#F8F2E6;z-index:999;display:flex;align-items:center;justify-content:center;}
+#introOverlay{position:fixed;inset:0;background:#fff;z-index:999;display:flex;align-items:center;justify-content:center;}
 #introOverlay.hidden{display:none;}
-#introVideo{width:100%;height:100%;object-fit:cover;}
+#introVideo{width:100%;height:100%;object-fit:contain;}
 #introSkipBtn{
   position:absolute;bottom:28px;right:20px;background:rgba(20,15,10,.55);color:#fff;
   border:1.5px solid rgba(255,255,255,.65);border-radius:20px;padding:8px 16px;
@@ -377,7 +377,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 <body>
 
 <div id="introOverlay">
-  <video id="introVideo" src="assets/intro.mp4" autoplay muted playsinline></video>
+  <video id="introVideo" src="assets/intro.mp4?v=5" autoplay muted playsinline></video>
   <button id="introSkipBtn" onclick="dismissIntro()">Saltar ⏭</button>
 </div>
 
@@ -3204,7 +3204,9 @@ function initIntro(){
   v.addEventListener('ended', dismissIntro);
   v.addEventListener('error', dismissIntro);
   setTimeout(dismissIntro, 8000); // salvaguarda si el autoplay queda bloqueado o el vídeo no carga
-  v.play().catch(dismissIntro);
+  // Intenta con sonido (el audio va sincronizado con las burbujas); si el navegador lo bloquea, sigue sin sonido.
+  v.muted = false;
+  v.play().catch(()=>{ v.muted = true; v.play().catch(dismissIntro); });
 }
 function boot(){
   if(ADMIN_MODE){ dismissIntroNow(); }
