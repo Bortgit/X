@@ -81,6 +81,13 @@ img{max-width:100%;}
   -webkit-overflow-scrolling:touch;
   position:relative;
 }
+/* Móvil: la app ocupa toda la pantalla, sin marco */
+@media (max-width:600px){
+  body{padding-block:0;background:var(--bg);}
+  .app-wrap{padding-inline:0;gap:0;display:block;}
+  .phone{width:100%;max-width:none;border-radius:0;box-shadow:none;}
+  .phone-screen{height:100vh;height:100dvh;max-height:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+}
 .screen{display:none;}
 .screen.active{display:block;}
 .screen-pad{padding:18px 18px 90px;}
