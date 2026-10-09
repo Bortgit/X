@@ -559,6 +559,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
       <div class="screen" id="screenDiyBooking">
         <div class="header-row"><button class="back-btn" onclick="nav('screenXpServices')">← Volver</button><h2 id="diyBookingTitle">DIY</h2></div>
         <div class="screen-pad">
+          <div id="diyEnrollments"></div>
           <div id="diyDogChoice"></div>
           <div id="diyGroupChoice"></div>
           <div class="note-box" id="diyScheduleNote"></div>
@@ -1871,38 +1872,82 @@ function applyTrainingBooking(d){
   goHome();
 }
 
-/* ---------------- DIY (horario fijo, sin calendario libre) ---------------- */
+/* ---------------- DIY (horario fijo, sin calendario libre) ----------------
+   El DIY grupal es una suscripción mensual de Stripe (100 €/mes, una por perro apuntado).
+   Abandonarlo cancela el cobro del mes siguiente, pero la plaza sigue reservada hasta que
+   termine el mes ya pagado (b.endsAt = primer día SIN plaza). */
+function diyEndedOn(b, date){
+  if(b.diyStatus==='ended') return true;
+  return !!(b.endsAt && date >= b.endsAt);
+}
+function diyEnded(b){ return diyEndedOn(b, todayStr()); }
+function unixToDay(ts){ return new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Madrid'}).format(new Date(ts*1000)); }
+function diyIsActive(b){ return b.paid && !b.cancelled && b.diyServiceId==='diyg' && !diyEnded(b); }
 function diyGroupOccupancy(groupId){
   let count=0;
   S.clients.forEach(cl=>{
-    cl.bookingsTraining.forEach(b=>{ if(b.paid && b.diyServiceId==='diyg' && b.diyGroup===groupId) count++; });
+    cl.bookingsTraining.forEach(b=>{ if(diyIsActive(b) && b.diyGroup===groupId) count++; });
   });
   return count;
 }
 let diySel = {dogId:null, group:null};
+function renderDiyEnrollments(c){
+  const box = document.getElementById('diyEnrollments');
+  const mine = c.bookingsTraining.map((b,i)=>({b,i})).filter(x=>diyIsActive(x.b));
+  if(!mine.length){ box.innerHTML = ''; return; }
+  box.innerHTML = mine.map(({b,i})=>{
+    const dog = c.dogs.find(d=>d.id===b.dogId);
+    const grp = DIY_GROUPS.find(g=>g.id===b.diyGroup);
+    const head = `<div class="line"><span>🐶 ${escapeHtml(dog?dog.name:'')}</span><span>Lunes y jueves, ${grp?grp.label:''}</span></div>`;
+    if(b.diyStatus==='leaving' && b.endsAt){
+      return `<div class="pricebox" style="margin-bottom:12px;">${head}
+        <p class="card-sub" style="margin:8px 0 0;">Has abandonado el DIY. Tu plaza sigue reservada hasta el ${humanDate(addDays(b.endsAt,-1))} (mes ya pagado) y no se te volverá a cobrar.</p></div>`;
+    }
+    const renew = b.renewsAt ? `Próximo cobro: ${humanDate(b.renewsAt)} (${DIY_PRICE_TXT})` : `Se cobra ${DIY_PRICE_TXT} cada mes de forma automática`;
+    return `<div class="pricebox" style="margin-bottom:12px;">${head}
+      <p class="card-sub" style="margin:8px 0;">Suscripción DIY activa · ${renew}</p>
+      <button class="btn btn-outline btn-sm" onclick="abandonDiy(${i})">Abandonar el DIY</button></div>`;
+  }).join('');
+}
+const DIY_PRICE_TXT = '100 €';
 function renderDiyBooking(){
   const c = activeClient();
-  diySel = {dogId: selectedDog(c).id, group: null};
   document.getElementById('diyBookingTitle').textContent = selectedService.name;
+  renderDiyEnrollments(c);
 
+  // Solo se puede apuntar un perro que aún no esté en el DIY.
+  const enrolled = new Set(c.bookingsTraining.filter(diyIsActive).map(b=>b.dogId));
+  const free = c.dogs.filter(d=>!enrolled.has(d.id));
   const dogBox = document.getElementById('diyDogChoice');
-  if(c.dogs.length>1){
+  const groupBox = document.getElementById('diyGroupChoice');
+  const noteBox = document.getElementById('diyScheduleNote');
+  const payBtn = document.getElementById('diyPayBtn');
+  if(!free.length){
+    diySel = {dogId:null, group:null};
+    dogBox.innerHTML = ''; groupBox.innerHTML = ''; noteBox.innerHTML = '';
+    document.getElementById('diyPricebox').innerHTML = '';
+    payBtn.style.display = 'none';
+    return;
+  }
+  payBtn.style.display = '';
+  const sel = free.find(d=>d.id===selectedDog(c).id) || free[0];
+  diySel = {dogId: sel.id, group: null};
+
+  if(free.length>1){
     dogBox.innerHTML = `<p class="card-sub">¿Para qué perro es esta suscripción?</p><div class="hour-row">` +
-      c.dogs.map(d=>`<div class="hour-chip ${d.id===diySel.dogId?'selected':''}" data-dog="${d.id}" onclick="pickDiyDog('${d.id}')">${escapeHtml(d.name)}</div>`).join('') +
+      free.map(d=>`<div class="hour-chip ${d.id===diySel.dogId?'selected':''}" data-dog="${d.id}" onclick="pickDiyDog('${d.id}')">${escapeHtml(d.name)}</div>`).join('') +
       `</div>`;
   } else {
     dogBox.innerHTML = '';
   }
 
-  const groupBox = document.getElementById('diyGroupChoice');
-  const noteBox = document.getElementById('diyScheduleNote');
   groupBox.innerHTML = `<p class="card-sub">Elige grupo (lunes y jueves):</p><div class="hour-row">` +
     DIY_GROUPS.map(g=>{
       const occ = diyGroupOccupancy(g.id);
       const full = occ>=DIY_GROUP_CAPACITY;
       return `<div class="hour-chip ${full?'closed':''}" data-group="${g.id}" ${full?'':`onclick="pickDiyGroup('${g.id}')"`}>${g.label} (${occ}/${DIY_GROUP_CAPACITY})</div>`;
     }).join('') + `</div>`;
-  noteBox.innerHTML = 'Horario cerrado: lunes y jueves, salvo festivos. Las clases que caen en festivo no se recuperan. Máximo 4 perros por grupo.';
+  noteBox.innerHTML = `Es una suscripción mensual: se te cobran ${DIY_PRICE_TXT} cada mes de forma automática. Puedes abandonarla cuando quieras desde esta misma pantalla; tu plaza seguirá reservada hasta que termine el mes ya pagado.`;
   updateDiyPricebox();
 }
 function pickDiyDog(id){
@@ -1915,41 +1960,102 @@ function pickDiyGroup(g){
   updateDiyPricebox();
 }
 function updateDiyPricebox(){
-  const c = activeClient();
-  const discount = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
-  const final = (selectedService.price - discount).toFixed(2);
   document.getElementById('diyPricebox').innerHTML = `
-    <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€</span></div>
-    <div class="line"><span>Descuento XP mensual</span><span>-${discount.toFixed(2)}€</span></div>
-    <div class="line tot"><span>Total a pagar</span><span>${final}€</span></div>`;
+    <div class="line"><span>${selectedService.name}</span><span>${selectedService.price.toFixed(2)}€ / mes</span></div>
+    <div class="line tot"><span>Total a pagar hoy</span><span>${selectedService.price.toFixed(2)}€</span></div>`;
   document.getElementById('diyPayBtn').disabled = !diySel.group;
 }
 function payDiyBooking(){
-  const c = activeClient();
-  if(!diySel.group) return;
-  const discountEur = effectiveDiscount(selectedService.price, c.xpMonthly*XP_TO_EUR);
-  startPayment('diy', {service:selectedService.id, discountCents:Math.round(discountEur*100)}, {
-    serviceId:selectedService.id, dogId:diySel.dogId, group:diySel.group, discountEur,
+  if(!diySel.group || !diySel.dogId) return;
+  // Suscripción de precio fijo: el servidor tampoco aplica descuentos al DIY.
+  startPayment('diy', {service:selectedService.id, discountCents:0}, {
+    serviceId:selectedService.id, dogId:diySel.dogId, group:diySel.group, discountEur:0,
   });
 }
-// Se ejecuta SOLO cuando Stripe ha confirmado el pago (o no hay nada que cobrar).
-function applyDiyBooking(d){
+// Se ejecuta SOLO cuando Stripe ha confirmado el pago (primer mes) y ha creado la suscripción.
+function applyDiyBooking(d, info){
   const c = activeClient();
   const svc = SERVICES.find(s=>s.id===d.serviceId);
-  const usedXp = Math.round(d.discountEur/XP_TO_EUR);
-  c.xpMonthly = Math.max(0, c.xpMonthly - usedXp);
   const schedule = `Lunes y jueves, ${DIY_GROUPS.find(g=>g.id===d.group).label}`;
   c.bookingsTraining.push({
     service:svc.name, dogId:d.dogId, diyServiceId:svc.id, diyGroup:d.group,
-    schedule, recurring:true,
-    price:svc.price, discount:d.discountEur, paidAmount:svc.price-d.discountEur,
+    schedule, recurring:true, diyStatus:'active',
+    stripeSubscriptionId: (info && info.subscriptionId) || null,
+    price:svc.price, discount:0, paidAmount:svc.price,
     paid:true, createdSimDate:S.meta.simDate,
   });
   const dogName = c.dogs.find(x=>x.id===d.dogId).name;
   c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Suscripción DIY confirmada', body:`${svc.name} para ${dogName}: ${schedule}.`, read:false});
   saveState();
   showToast('¡Suscripción DIY confirmada y pagada!', {icon:'🔁'});
+  syncDiySubscriptions();
   goHome();
+}
+// El cliente abandona el DIY: se cancela el cobro del mes siguiente en Stripe, pero la plaza
+// se mantiene hasta que termine el mes ya pagado.
+async function abandonDiy(idx){
+  const c = activeClient();
+  const b = c.bookingsTraining[idx];
+  if(!b || !diyIsActive(b) || b.diyStatus==='leaving') return;
+  const dog = c.dogs.find(d=>d.id===b.dogId);
+  const until = b.renewsAt ? ` hasta el ${humanDate(addDays(b.renewsAt,-1))}` : ' hasta que termine el mes ya pagado';
+  if(!confirm(`¿Abandonar el DIY de ${dog?dog.name:'tu perro'}?\n\nYa has pagado este mes: tu plaza se mantiene${until} y después no se te volverá a cobrar.`)) return;
+  if(b.stripeSubscriptionId){
+    try{
+      const r = await authFetch('/api/subscription', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:b.stripeSubscriptionId, action:'cancel_at_period_end'})});
+      const out = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(out.error || 'cancel');
+      b.diyStatus = 'leaving';
+      b.endsAt = out.endsAt ? unixToDay(out.endsAt) : (b.renewsAt || addMonths(todayStr(),1));
+    }catch(e){
+      showToast('No se pudo abandonar el DIY. Inténtalo de nuevo.', {type:'warn', duration:4500});
+      return;
+    }
+  } else {
+    // DIY antiguo sin suscripción en Stripe: no hay nada que cancelar, se da de baja directamente.
+    b.diyStatus = 'ended';
+  }
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Has abandonado el DIY', body: b.endsAt ? `Tu plaza sigue reservada hasta el ${humanDate(addDays(b.endsAt,-1))}. No se te volverá a cobrar.` : 'Has dejado el DIY.', read:false});
+  saveState();
+  showToast('Has abandonado el DIY. No se te volverá a cobrar.', {icon:'👋', duration:4500});
+  renderDiyBooking();
+}
+// Sincroniza con Stripe el estado de las suscripciones DIY (renovaciones, impagos, bajas).
+// El cliente revisa las suyas; el admin revisa las de todos (así una plaza impagada se libera aunque
+// ese cliente no abra la app).
+async function syncDiySubscriptions(){
+  const clients = ADMIN_MODE ? S.clients.filter(x=>Array.isArray(x.bookingsTraining)) : [activeClient()].filter(Boolean);
+  let changed = false;
+  for(const c of clients){
+    for(const b of c.bookingsTraining){
+      if(!b.stripeSubscriptionId || b.diyServiceId!=='diyg' || b.cancelled || b.diyStatus==='ended') continue;
+      if(b.endsAt && todayStr() >= b.endsAt) continue; // ya terminó el mes pagado
+      try{
+        const r = await authFetch('/api/subscription?id='+encodeURIComponent(b.stripeSubscriptionId));
+        if(!r.ok) continue;
+        const s = await r.json();
+        const before = JSON.stringify([b.diyStatus,b.endsAt,b.renewsAt]);
+        if(['canceled','unpaid','incomplete_expired'].includes(s.status)){
+          // Cancelada o impagada: la plaza queda libre salvo que Stripe diga hasta cuándo estaba pagada.
+          const end = s.endsAt ? unixToDay(s.endsAt) : null;
+          if(end && end > todayStr()){ b.diyStatus='leaving'; b.endsAt=end; } else { b.diyStatus='ended'; }
+        } else if(s.cancelAtPeriodEnd && s.endsAt){
+          b.diyStatus = 'leaving'; b.endsAt = unixToDay(s.endsAt);
+        } else if(s.status==='active' || s.status==='trialing' || s.status==='past_due'){
+          // Mientras Stripe reintenta un cobro fallido (past_due) la plaza se mantiene; si finalmente
+          // se cancela o queda impagada, la rama de arriba la libera.
+          b.diyStatus = 'active'; delete b.endsAt;
+          if(s.periodEnd) b.renewsAt = unixToDay(s.periodEnd);
+        }
+        if(before !== JSON.stringify([b.diyStatus,b.endsAt,b.renewsAt])) changed = true;
+      }catch(e){ /* sin conexión: se mantiene el estado actual */ }
+    }
+  }
+  if(changed){
+    saveState();
+    if(ADMIN_MODE){ try{ renderAdminClients(); renderAdminAgenda(); }catch(e){} }
+    else { try{ if(document.getElementById('screenDiyBooking').classList.contains('active')) renderDiyBooking(); }catch(e){} }
+  }
 }
 
 /* ---------------- HUCHA / residencia ---------------- */
@@ -2214,7 +2320,7 @@ function applyGuarderiaBooking(b){
 function trainingBookingsOnDate(c, date){
   const dow = parseDate(date).getUTCDay(); // 0=domingo ... 1=lunes ... 4=jueves
   const isDiyDay = dow===1 || dow===4;
-  return c.bookingsTraining.filter(b=> !b.cancelled && (b.date===date || (b.recurring && isDiyDay)));
+  return c.bookingsTraining.filter(b=> !b.cancelled && (b.date===date || (b.recurring && isDiyDay && !diyEndedOn(b, date))));
 }
 function residenceBookingsCoveringDate(c, date){ return c.bookingsResidencia.filter(b=> b.paid && date>=b.checkin && date<b.checkout); }
 function guarderiaBookingsOnDate(c, date){
@@ -2955,8 +3061,9 @@ function openClientModal(id){
     const amountTxt = b.bonoTotal>1 && b.bonoIndex>1 ? 'incluida en el bono' : `${b.paidAmount.toFixed(2)}€`;
     const right = b.cancelled
       ? `<span style="color:var(--danger);font-weight:800;font-size:11px;white-space:nowrap;">Cancelada</span>`
-      : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelTrainingBooking('${c.id}',${i})">Cancelar</button>`;
-    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${when} — ${b.service}${dn?' ('+escapeHtml(dn.name)+')':''}${bonoTag} (${amountTxt})</span>${right}</div>`;
+      : `<button class="btn btn-sm btn-danger" style="width:auto;padding:4px 8px;font-size:11px;" onclick="adminCancelTrainingBooking('${c.id}',${i})">${b.diyServiceId==='diyg'?'Quitar del DIY':'Cancelar'}</button>`;
+    const diyTag = b.diyServiceId==='diyg' ? (b.diyStatus==='ended' ? ' · terminado' : (b.diyStatus==='leaving' && b.endsAt ? ` · abandonado, plaza hasta el ${humanDate(addDays(b.endsAt,-1))}` : ' · suscripción activa')) : '';
+    return `<div class="kv"><span style="${b.cancelled?'opacity:.55;text-decoration:line-through;':''}">${when} — ${b.service}${diyTag}${dn?' ('+escapeHtml(dn.name)+')':''}${bonoTag} (${amountTxt})</span>${right}</div>`;
   }).join('') : '<p style="font-size:12px;">Sin reservas</p>';
   const residHist = c.bookingsResidencia.length ? c.bookingsResidencia.map((b,i)=>{
     const names = joinNames(b.dogIds.map(id=>{ const d=c.dogs.find(x=>x.id===id); return d?d.name:'?'; }));
@@ -3128,15 +3235,32 @@ function adminReenableEvaluation(clientId, dogId){
   saveState();
   openClientModal(clientId);
 }
-function adminCancelTrainingBooking(clientId, idx){
+async function adminCancelTrainingBooking(clientId, idx){
   const c = S.clients.find(x=>x.id===clientId);
   const b = c.bookingsTraining[idx];
   if(!b || b.cancelled) return;
-  if(!confirm('¿Cancelar esta reserva? El cliente no puede deshacerlo ni volver a activarla; recibirá un aviso.')) return;
+  const isDiy = b.diyServiceId==='diyg';
+  const hasSub = isDiy && !!b.stripeSubscriptionId;
+  const msg = isDiy
+    ? `¿Quitar a este cliente del DIY? Se libera su plaza ahora mismo${hasSub ? ' y se cancela su cobro mensual automático en Stripe' : ''}. No se devuelve el mes ya pagado. El cliente no puede deshacerlo y recibirá un aviso.`
+    : '¿Cancelar esta reserva? El cliente no puede deshacerlo ni volver a activarla; recibirá un aviso.';
+  if(!confirm(msg)) return;
+  if(hasSub){
+    try{
+      const r = await authFetch('/api/subscription', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:b.stripeSubscriptionId, action:'cancel'})});
+      const out = await r.json().catch(()=>({}));
+      // Si Stripe ya la tenía cancelada, seguimos igualmente.
+      if(!r.ok && !/already been canceled|no such subscription|resource_missing/i.test(out.error||'')) throw new Error(out.error || 'cancel');
+    }catch(e){
+      showToast('No se pudo cancelar el cobro en Stripe; el cliente NO se ha quitado del DIY. ' + (e.message||''), {type:'warn', duration:6000});
+      return;
+    }
+  }
   b.cancelled = true;
   b.paid = false;
+  if(isDiy) b.diyStatus = 'ended';
   const when = b.recurring ? b.schedule : `${humanDate(b.date)} ${b.hour}`;
-  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title:'Reserva cancelada', body:`Tu adiestrador ha cancelado: ${b.service} (${when}).`, read:false});
+  c.notifications.unshift({id:'n'+Date.now(), date:S.meta.simDate, title: isDiy ? 'Has sido dado de baja del DIY' : 'Reserva cancelada', body: isDiy ? 'Tu adiestrador te ha dado de baja del DIY. No se te volverá a cobrar.' : `Tu adiestrador ha cancelado: ${b.service} (${when}).`, read:false});
   saveState();
   openClientModal(clientId);
   if(S.session && S.session.role==='admin') renderAdminAgenda();
@@ -3227,6 +3351,7 @@ function boot(){
     try{ if(authToken && S.session){ await pushNow(); await pull(true); afterPull(); } }catch(e){}
     try{ await handlePaymentReturn(); }catch(e){ console.warn(e); }
     syncSubscription();
+    syncDiySubscriptions();
   })();
 }
 
