@@ -661,6 +661,13 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           </div>
           <div id="dogsSection"></div>
           <button class="btn" onclick="saveProfile()">Guardar cambios</button>
+          <div class="card" style="margin-top:14px;">
+            <div class="card-title" style="font-size:13px;">Cambiar contraseña</div>
+            <div class="field"><label>Contraseña actual</label><input type="password" id="pwCurrent" autocomplete="current-password"></div>
+            <div class="field"><label>Contraseña nueva</label><input type="password" id="pwNew" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+            <p class="form-error" id="pwError"></p>
+            <button class="btn btn-outline btn-sm" onclick="changePassword()">Cambiar contraseña</button>
+          </div>
           <button class="btn btn-outline" id="addDogBtn" style="margin-top:10px;" onclick="nav('screenAddDog')">+ Añadir otro perro</button>
           <button class="btn btn-outline" style="margin-top:10px;" onclick="logout()">Cerrar sesión</button>
         </div>
@@ -2971,11 +2978,36 @@ function openClientModal(id){
       <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="adminZeroXp('${c.id}','xpBank')">Poner hucha a 0</button>
     </div>
     <hr class="sep">
+    <h3 style="font-size:13px;">Contraseña olvidada</h3>
+    <p class="card-sub">Genera una contraseña temporal para este cliente. Se la pasas tú (por ejemplo, por WhatsApp) y él puede cambiarla desde su perfil.</p>
+    <button class="btn btn-outline btn-sm" onclick="adminResetPassword('${c.id}')">Restablecer contraseña</button>
+    <hr class="sep">
     <h3 style="font-size:13px;color:var(--danger);">Eliminar cuenta</h3>
     <p class="card-sub">Borra esta cuenta y todos sus datos (perros, reservas, XP). Si tiene la membresía activa, también se cancela en Stripe. Los pagos ya cobrados no se devuelven solos. No se puede deshacer.</p>
     <button class="btn btn-sm btn-danger" onclick="adminDeleteClient('${c.id}')">Eliminar cuenta</button>
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
+}
+async function adminResetPassword(clientId){
+  const c = S.clients.find(x=>x.id===clientId);
+  if(!c) return;
+  if(!confirm('¿Restablecer la contraseña de '+c.name+'? La actual dejará de funcionar.')) return;
+  try{
+    const out = await api('/api/reset-password', 'POST', {id:clientId});
+    alert('Contraseña temporal de '+c.name+':\n\n'+out.password+'\n\nCópiala y envíasela ahora: no se vuelve a mostrar. Podrá cambiarla desde su perfil.');
+  }catch(e){ showToast(e.message || 'No se pudo restablecer la contraseña.', {type:'warn', duration:5000}); }
+}
+async function changePassword(){
+  const err = document.getElementById('pwError');
+  err.textContent = '';
+  const cur = document.getElementById('pwCurrent').value, nxt = document.getElementById('pwNew').value;
+  if(!cur){ err.textContent = 'Escribe tu contraseña actual.'; return; }
+  if(nxt.length<6){ err.textContent = 'La contraseña nueva debe tener al menos 6 caracteres.'; return; }
+  try{
+    await api('/api/change-password', 'POST', {current:cur, next:nxt});
+    document.getElementById('pwCurrent').value = ''; document.getElementById('pwNew').value = '';
+    showToast('Contraseña cambiada.');
+  }catch(e){ err.textContent = e.message || 'No se pudo cambiar la contraseña.'; }
 }
 async function adminDeleteClient(clientId){
   const c = S.clients.find(x=>x.id===clientId);
