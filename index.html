@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BalancedDog Club</title>
-<link rel="manifest" href="manifest.json">
+<base href="/">
+<link rel="manifest" href="/manifest.json" id="manifestLink">
+<script>
+/* /admin = la app del administrador (otra dirección, otro icono). La app de clientes no enlaza a ella. */
+var ADMIN_MODE = /^\/admin\/?$/.test(location.pathname);
+if(ADMIN_MODE){
+  document.getElementById('manifestLink').setAttribute('href','/manifest-admin.json');
+  document.title = 'BalancedDog Admin';
+}
+</script>
 <link rel="icon" href="assets/icon-512.png" sizes="512x512" type="image/png">
 <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -12,7 +21,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BalancedDog Club">
+<meta name="apple-mobile-web-app-title" content="BalancedDog Club" id="appTitleMeta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -385,7 +394,6 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
           </div>
           <button class="btn" style="margin-top:18px;" onclick="nav('screenOnboarding')">Crear cuenta</button>
           <button class="btn btn-outline" style="margin-top:10px;" onclick="nav('screenClientLogin')">Ya tengo cuenta</button>
-          <button class="admin-login-link" onclick="nav('screenAdminLogin')">Acceso administrador</button>
         </div>
       </div>
 
@@ -404,7 +412,7 @@ hr.sep{border:none;border-top:1px solid var(--accent-light);margin:14px 0;}
 
       <!-- ============ ADMIN LOGIN ============ -->
       <div class="screen" id="screenAdminLogin">
-        <div class="header-row"><button class="back-btn" onclick="nav('screenLanding')">← Volver</button><h2>Acceso administrador</h2></div>
+        <div class="header-row"><button class="back-btn" id="adminBackBtn" onclick="nav('screenLanding')">← Volver</button><h2>Acceso administrador</h2></div>
         <div class="screen-pad">
           <div class="card">
             <div class="field"><label>Contraseña de administrador</label><input type="password" id="adminLoginPassword"></div>
@@ -1167,6 +1175,10 @@ function loadState(){
       S = JSON.parse(raw);
       migrateLoadedState();
       if(!authToken){ S.session = null; S.clients = []; }
+      else if(S.session && (S.session.role==='admin') !== ADMIN_MODE){
+        // Una sesión de cliente no se usa en /admin ni al revés: se cierra solo en este dispositivo.
+        setToken(null); resetSyncBase(); S.session = null; S.clients = [];
+      }
       return;
     }
   }catch(e){ console.warn('Estado corrupto, reiniciando', e); }
@@ -2562,6 +2574,7 @@ async function submitClientLogin(){
   showForcePw(forcePwPending);
 }
 function renderAdminLoginScreen(){
+  const bb = document.getElementById('adminBackBtn'); if(bb) bb.style.display = ADMIN_MODE ? 'none' : '';
   document.getElementById('adminLoginPassword').value='';
   document.getElementById('adminLoginError').textContent='';
 }
@@ -2757,7 +2770,7 @@ function applyAuthView(){
     authWrap.classList.remove('hidden');
     clientWrap.classList.add('hidden');
     adminWrap.classList.add('hidden');
-    nav('screenLanding');
+    nav(ADMIN_MODE ? 'screenAdminLogin' : 'screenLanding');
     return;
   }
   if(S.session.role==='admin'){
@@ -3179,6 +3192,7 @@ const RENDERERS = {
   screenEvaluacion: renderEvaluacion,
 };
 
+function dismissIntroNow(){ const o = document.getElementById('introOverlay'); if(o) o.classList.add('hidden'); }
 function dismissIntro(){
   const overlay = document.getElementById('introOverlay');
   if(!overlay || overlay.classList.contains('hidden')) return;
@@ -3193,10 +3207,11 @@ function initIntro(){
   v.play().catch(dismissIntro);
 }
 function boot(){
+  if(ADMIN_MODE){ dismissIntroNow(); }
   refreshToday();
   applyAuthView();
   // Al volver de pagar no se repite el vídeo de entrada.
-  if(/[?&]pago=/.test(location.search)) dismissIntro(); else initIntro();
+  if(ADMIN_MODE || /[?&]pago=/.test(location.search)) dismissIntro(); else initIntro();
   (async ()=>{
     try{ if(authToken && S.session){ await pushNow(); await pull(true); afterPull(); } }catch(e){}
     try{ await handlePaymentReturn(); }catch(e){ console.warn(e); }
