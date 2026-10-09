@@ -2970,8 +2970,29 @@ function openClientModal(id){
       </div>
       <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="adminZeroXp('${c.id}','xpBank')">Poner hucha a 0</button>
     </div>
+    <hr class="sep">
+    <h3 style="font-size:13px;color:var(--danger);">Eliminar cuenta</h3>
+    <p class="card-sub">Borra esta cuenta y todos sus datos (perros, reservas, XP). Si tiene la membresía activa, también se cancela en Stripe. Los pagos ya cobrados no se devuelven solos. No se puede deshacer.</p>
+    <button class="btn btn-sm btn-danger" onclick="adminDeleteClient('${c.id}')">Eliminar cuenta</button>
     <button class="btn btn-outline" style="margin-top:10px;" onclick="closeClientModal()">Cerrar</button>`;
   document.getElementById('clientModal').classList.remove('hidden');
+}
+async function adminDeleteClient(clientId){
+  const c = S.clients.find(x=>x.id===clientId);
+  if(!c) return;
+  const subNote = c.stripeSubscriptionId ? '\n\nTiene una suscripción en Stripe: se cancelará.' : '';
+  if(!confirm('¿Eliminar la cuenta de '+c.name+'? Se borran todos sus datos y no se puede deshacer.'+subNote)) return;
+  try{
+    await pushNow();
+    await api('/api/delete-client', 'POST', {id:clientId});
+  }catch(e){ showToast(e.message || 'No se pudo eliminar la cuenta.', {type:'warn', duration:5000}); return; }
+  S.clients = S.clients.filter(x=>x.id!==clientId);
+  delete syncBase.clients[clientId];
+  saveBase(); localSave();
+  closeClientModal();
+  renderAdminClients();
+  renderAdminStats();
+  showToast('Cuenta eliminada.');
 }
 function notifyXpAdjustment(c, field, delta){
   if(!delta) return;
